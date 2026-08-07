@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"/>
+<title>GlassStudio · 低代码设计工作台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      colors: { ink: '#0a0a0a', paper: '#fafafa' },
+      fontFamily: { sans: ['Inter','-apple-system','SF Pro Text','PingFang SC','Noto Sans SC','system-ui','sans-serif'] }
+    }}
+  };
+</script>
+<style>
+  html,body{height:100%;overflow:hidden;-webkit-tap-highlight-color:transparent}
+  *{box-sizing:border-box}
+  body{font-family:'Inter','-apple-system','PingFang SC','Noto Sans SC',system-ui,sans-serif}
+  /* ===== 毛玻璃面板（渐进增强：body.no-glass 时自动降级） ===== */
+  .glass{
+    background:rgba(255,255,255,.62);
+    border:1px solid rgba(0,0,0,.08);
+    backdrop-filter:blur(22px) saturate(150%);
+    -webkit-backdrop-filter:blur(22px) saturate(150%);
+    box-shadow:0 8px 32px rgba(0,0,0,.06), inset 0 1px 0 rgba(255,255,255,.6);
+  }
+  .dark .glass{
+    background:rgba(17,17,19,.55);
+    border:1px solid rgba(255,255,255,.09);
+    box-shadow:0 8px 32px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  body.no-glass .glass{background:rgba(250,250,250,.98);backdrop-filter:none;-webkit-backdrop-filter:none}
+  body.no-glass.dark .glass{background:rgba(24,24,27,.98);backdrop-filter:none;-webkit-backdrop-filter:none}
+  /* ===== 画布点阵背景 ===== */
+  .dot-grid{
+    background-image:radial-gradient(circle, rgba(0,0,0,.14) 1px, transparent 1.4px);
+    background-size:24px 24px;
+    background-color:#efefef;
+  }
+  .dark .dot-grid{
+    background-image:radial-gradient(circle, rgba(255,255,255,.13) 1px, transparent 1.4px);
+    background-color:#121214;
+  }
+  /* ===== 工具栏按钮 ===== */
+  .tool-btn{
+    display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;
+    width:52px;padding:7px 0;border-radius:12px;color:#52525b;cursor:pointer;
+    transition:all .15s ease;user-select:none;-webkit-user-select:none;
+  }
+  .dark .tool-btn{color:#a1a1aa}
+  .tool-btn:hover{background:rgba(0,0,0,.05)}
+  .dark .tool-btn:hover{background:rgba(255,255,255,.07)}
+  .tool-btn.active{background:rgba(0,0,0,.09);color:#18181b;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+  .dark .tool-btn.active{background:rgba(255,255,255,.12);color:#fff}
+  /* ===== 属性面板输入 ===== */
+  .prop-input{
+    width:100%;padding:6px 8px;border-radius:8px;font-size:12px;
+    background:rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.08);color:inherit;outline:none;
+  }
+  .dark .prop-input{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.1)}
+  .prop-input:focus{border-color:rgba(0,0,0,.35)}
+  .dark .prop-input:focus{border-color:rgba(255,255,255,.4)}
+  .prop-label{font-size:10px;letter-spacing:.05em;color:#71717a;text-transform:uppercase}
+  .dark .prop-label{color:#8b8b94}
+  /* ===== 元素选中框 ===== */
+  .elm{position:absolute;cursor:move;touch-action:none}
+  .elm.selected{box-shadow:0 0 0 2px #fff, 0 0 0 4px #18181b;z-index:9999!important}
+  .dark .elm.selected{box-shadow:0 0 0 2px #18181b, 0 0 0 4px #fafafa}
+  /* ===== 滚动条 ===== */
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:99px}
+  .dark ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18)}
+  /* ===== 通用 ===== */
+  .drag-none{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+  .fade-in{animation:fadeIn .25s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  #artboard{transition:box-shadow .2s ease}
+</style>
+</head>
+<body class="dark drag-none">
+<div id="app" class="h-full w-full flex flex-col">
+
+  <!-- ══════════ 顶部栏 ══════════ -->
+  <header class="glass z-30 flex items-center gap-3 px-3 h-[52px] shrink-0">
+    <div class="flex items-center gap-2.5">
+      <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-950 dark:from-zinc-100 dark:to-zinc-400 flex items-center justify-center text-white dark:text-zinc-900 text-sm font-bold">G</div>
+      <div class="leading-tight hidden sm:block">
+        <div class="text-[13px] font-semibold tracking-tight">GlassStudio</div>
+        <div class="text-[10px] text-zinc-500 dark:text-zinc-400">低代码设计工作台 · 原型</div>
+      </div>
+    </div>
+    <div class="flex-1"></div>
+    <!-- 缩放控制 -->
+    <div class="glass flex items-center gap-1 rounded-full px-1.5 py-1 !shadow-none">
+      <button id="zoomOut" class="w-7 h-7 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-sm">−</button>
+      <span id="zoomLabel" class="text-[11px] tabular-nums w-11 text-center">100%</span>
+      <button id="zoomIn" class="w-7 h-7 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-sm">+</button>
+      <button id="zoomFit" class="ml-0.5 px-2 h-7 rounded-full text-[11px] hover:bg-black/5 dark:hover:bg-white/10">适配</button>
+    </div>
+    <!-- 主题与玻璃开关 -->
+    <button id="glassToggle" title="毛玻璃降级开关" class="w-8 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-[13px]">▩</button>
+    <button id="themeToggle" title="黑白 / 晨昏切换" class="w-8 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-[13px]">◐</button>
+    <!-- 导出 -->
+    <div class="flex items-center gap-1.5">
+      <button id="btnPng" class="px-3 h-8 rounded-full text-[12px] border border-zinc-300 dark:border-zinc-700 hover:bg-black/5 dark:hover:bg-white/10">PNG</button>
+      <button id="btnHtml" class="px-3 h-8 rounded-full text-[12px] border border-zinc-300 dark:border-zinc-700 hover:bg-black/5 dark:hover:bg-white/10">HTML</button>
+      <button id="btnZip" class="px-3.5 h-8 rounded-full text-[12px] font-semibold bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:opacity-85">导出 ZIP</button>
+    </div>
+  </header>
+
+  <!-- ══════════ 主体 ══════════ -->
+  <div class="flex flex-1 min-h-0 relative">
+
+    <!-- 左侧工具栏 -->
+    <aside class="glass z-20 w-[64px] shrink-0 flex flex-col items-center py-3 gap-1">
+      <div class="tool-btn active" data-tool="select"><span class="text-[15px]">↖</span><span class="text-[9px]">选择</span></div>
+      <div class="tool-btn" data-tool="rect"><span class="text-[15px]">▭</span><span class="text-[9px]">矩形</span></div>
+      <div class="tool-btn" data-tool="circle"><span class="text-[15px]">◯</span><span class="text-[9px]">圆形</span></div>
+      <div class="tool-btn" data-tool="text"><span class="text-[15px]">T</span><span class="text-[9px]">文本</span></div>
+      <div class="tool-btn" data-tool="image"><span class="text-[15px]">▧</span><span class="text-[9px]">图片</span></div>
+      <div class="tool-btn" data-tool="button"><span class="text-[15px]">⏺</span><span class="text-[9px]">按钮</span></div>
+      <div class="mt-auto w-8 h-px bg-zinc-300/60 dark:bg-zinc-700/60 my-2"></div>
+      <div class="tool-btn" data-tool="duplicate" title="复制"><span class="text-[15px]">⧉</span><span class="text-[9px]">复制</span></div>
+      <div class="tool-btn" data-tool="delete" title="删除"><span class="text-[15px]">✕</span><span class="text-[9px]">删除</span></div>
+    </aside>
+
+    <!-- 画布区 -->
+    <main id="viewport" class="dot-grid relative flex-1 min-w-0 overflow-hidden cursor-grab active:cursor-grabbing">
+      <div id="world" class="absolute left-0 top-0 origin-top-left will-change-transform">
+        <div id="artboard" class="relative bg-white shadow-[0_24px_80px_rgba(0,0,0,.18)]"></div>
+      </div>
+      <!-- 右下角提示 -->
+      <div class="absolute bottom-3 right-3 z-10 glass rounded-full px-3 py-1.5 text-[10px] text-zinc-500 dark:text-zinc-400 fade-in">
+        拖拽平移 · Cmd/⌃ + 滚轮缩放 · 捏合缩放 · 点选编辑
+      </div>
+    </main>
+
+    <!-- 右侧属性面板 -->
+    <aside id="inspector" class="glass z-20 w-[240px] shrink-0 overflow-y-auto p-3 space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="text-[12px] font-semibold">属性</div>
+        <div id="inspectorHint" class="text-[10px] text-zinc-400">未选中</div>
+      </div>
+      <div id="inspectorBody" class="space-y-4 text-zinc-600 dark:text-zinc-300">
+        <p class="text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">在画布上添加元素并选中，即可在此编辑位置、尺寸、颜色等属性。导出支持 PNG / HTML / ZIP。</p>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ══════════ 底部状态栏 ══════════ -->
+  <footer class="glass z-30 flex items-center gap-4 px-4 h-[30px] shrink-0 text-[10px] text-zinc-500 dark:text-zinc-400">
+    <span>画板 <b id="abSize">1280 × 800</b></span>
+    <span id="elmCount" class="hidden sm:inline">0 个图层</span>
+    <span class="flex-1"></span>
+    <span>Tailwind CSS · CDN</span>
+    <span id="layerList" class="hidden md:flex items-center gap-1"></span>
+  </footer>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" class="hidden"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+/* ═══════════════════ 核心状态 ═══════════════════ */
+const AB = { w: 1280, h: 800 };
+let elements = [];          // 文档图层（扁平数组）
+let selectedId = null;      // 选中图层
+let currentTool = 'select';
+let viewport = { x: 0, y: 0, scale: 1 };
+
+const $ = id => document.getElementById(id);
+const viewportEl = $('viewport'), worldEl = $('world'), artboardEl = $('artboard');
+const uid = () => 'el_' + Math.random().toString(36).slice(2, 9);
+
+/* ═══════════════════ 种子示例元素 ═══════════════════ */
+function seed() {
+  elements = [
+    { id: uid(), type:'rect', name:'背景面板', x:40, y:40, w:420, h:520, fill:'#efefef', radius:24, opacity:1, rotation:0 },
+    { id: uid(), type:'text', name:'标题', x:80, y:110, w:340, h:60, text:'品味黑白，克制高级', fontSize:30, fontWeight:700, color:'#111111', align:'left', opacity:1 },
+    { id: uid(), type:'text', name:'副标题', x:80, y:190, w:340, h:40, text:'低代码设计工作台 · 毛玻璃质感', fontSize:15, color:'#737373', align:'left', opacity:1 },
+    { id: uid(), type:'button', name:'按钮', x:80, y:430, w:160, h:48, text:'导出自定义', fill:'#111111', color:'#ffffff', radius:24, fontSize:15, opacity:1 },
+    { id: uid(), type:'rect', name:'玻璃卡片', x:280, y:300, w:150, h:110, fill:'rgba(255,255,255,.55)', radius:18, opacity:1, blur:true },
+    { id: uid(), type:'circle', name:'圆点', x:120, y:320, w:70, h:70, fill:'#d4d4d4', opacity:1 },
+  ];
+  selectedId = elements[0].id;
+}
+
+/* ═══════════════════ 几何与视口（框架无关核心） ═══════════════════ */
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const screenToWorld = (sx, sy) => ({ x: (sx - viewport.x) / viewport.scale, y: (sy - viewport.y) / viewport.scale });
+
+function applyViewport() {
+  worldEl.style.transform = `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`;
+  $('zoomLabel').textContent = Math.round(viewport.scale * 100) + '%';
+  artboardEl.style.width = AB.w + 'px';
+  artboardEl.style.height = AB.h + 'px';
+  $('abSize').textContent = AB.w + ' × ' + AB.h;
+}
+
+function zoomAt(cx, cy, factor) {
+  const newScale = clamp(viewport.scale * factor, 0.1, 4);
+  if (newScale === viewport.scale) return;
+  const w = screenToWorld(cx, cy);
+  viewport.scale = newScale;
+  viewport.x = cx - w.x * newScale;
+  viewport.y = cy - w.y * newScale;
+  applyViewport();
+}
+
+function fitView() {
+  const pw = viewportEl.clientWidth, ph = viewportEl.clientHeight;
+  viewport.scale = clamp(Math.min(pw / AB.w, ph / AB.h) * 0.92, 0.1, 4);
+  viewport.x = (pw - AB.w * viewport.scale) / 2;
+  viewport.y = (ph - AB.h * viewport.scale) / 2;
+  applyViewport();
+}
+
+/* ═══════════════════ 元素渲染 ─ 画布与导出共用样式生成 ═══════════════════ */
+function stylesFromLayer(el) {
+  const s = {
+    left: el.x + 'px', top: el.y + 'px',
+    width: (el.type === 'text' ? 'auto' : el.w + 'px'),
+    height: (el.type === 'text' ? 'auto' : el.h + 'px'),
+    opacity: el.opacity,
+    transform: el.rotation ? `rotate(${el.rotation}deg)` : 'none',
+    transformOrigin: 'center',
+  };
+  if (el.type === 'rect' || el.type === 'button' || el.type === 'circle') s.background = el.fill;
+  if (el.radius) s.borderRadius = el.radius + 'px';
+  if (el.blur) {
+    s.background = el.fill || 'rgba(255,255,255,.5)';
+    s.backdropFilter = 'blur(12px)';
+    s.WebkitBackdropFilter = 'blur(12px)';
+    s.border = '1px solid rgba(255,255,255,.6)';
+  }
+  if (el.type === 'circle') { s.borderRadius = '9999px'; }
+  return s;
+}
+function innerMarkup(el) {
+  if (el.type === 'text') return el.text || '文本';
+  if (el.type === 'button') return el.text || '按钮';
+  if (el.type === 'image') return '';
+  return '';
+}
+function textStyle(el) {
+  if (el.type !== 'text' && el.type !== 'button') return {};
+  return {
+    fontSize: el.fontSize + 'px', color: el.color, fontWeight: el.fontWeight || 400,
+    lineHeight: 1.3, textAlign: el.align || 'left', whiteSpace: 'pre-wrap',
+    display: 'flex', alignItems: el.type === 'button' ? 'center' : 'flex-start',
+    justifyContent: el.type === 'button' ? 'center' : 'flex-start',
+  };
+}
+
+function render() {
+  artboardEl.innerHTML = '';
+  artboardEl.style.background = '#ffffff';
+  // 底点阵
+  elements.slice().sort((a, b) => (a.z || 0) - (b.z || 0)).forEach(el => {
+    const d = document.createElement('div');
+    d.className = 'elm' + (el.id === selectedId ? ' selected' : '');
+    d.dataset.id = el.id;
+    Object.assign(d.style, stylesFromLayer(el), textStyle(el));
+    d.innerHTML = innerMarkup(el);
+    artboardEl.appendChild(d);
+  });
+  $('elmCount').textContent = elements.length + ' 个图层';
+  renderLayerList();
+}
+
+/* ═══════════════════ 图层面板（顶部微型）与属性渲染 ═══════════════════ */
+function renderLayerList() {
+  const wrap = $('layerList'); wrap.innerHTML = '';
+  elements.slice().reverse().forEach(el => {
+    const chip = document.createElement('span');
+    chip.textContent = el.name;
+    chip.className = 'px-2 py-0.5 rounded-full text-[9px] cursor-pointer ' +
+      (el.id === selectedId ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'hover:bg-black/5 dark:hover:bg-white/10');
+    chip.onclick = () => { selectedId = el.id; render(); };
+    wrap.appendChild(chip);
+  });
+}
+
+function renderInspector() {
+  const el = elements.find(e => e.id === selectedId);
+  const body = $('inspectorBody');
+  if (!el) {
+    $('inspectorHint').textContent = '未选中';
+    body.innerHTML = '<p class="text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">在画布上添加元素并选中，即可在此编辑位置、尺寸、颜色等属性。导出支持 PNG / HTML / ZIP。</p>';
+    return;
+  }
+  $('inspectorHint').textContent = el.name;
+  const row = (label, inner) => `<div><div class="prop-label mb-1">${label}</div>${inner}</div>`;
+  const num = (label, key, step=1) => row(label,
+    `<input class="prop-input" type="number" step="${step}" value="${el[key]}" oninput="updateProp('${key}', parseFloat(this.value)||0, this)">`);
+  const col = (label, key) => row(label,
+    `<div class="flex items-center gap-2"><input type="color" value="${hexIfPossible(el[key])}" oninput="updateProp('${key}', this.value, this)" class="w-8 h-8 rounded-lg border border-black/10 dark:border-white/10 cursor-pointer bg-transparent p-0.5"><input class="prop-input" value="${el[key]}" oninput="updateProp('${key}', this.value, this)"></div>`);
+  const txt = (label, key) => row(label,
+    `<textarea rows="${key==='text'?2:1}" class="prop-input resize-none" oninput="updateProp('${key}', this.value, this)">${(el[key]||'').replace(/</g,'&lt;')}</textarea>`);
+  const sel = (label, key, options) => row(label, `<select class="prop-input" onchange="updateProp('${key}', this.value, this)">${options.map(o=>`<option ${el[key]===o.v?'selected':''} value="${o.v}">${o.l}</option>`).join('')}</select>`);
+
+  let h = '';
+  h += row('名称', `<input class="prop-input" value="${el.name}" oninput="updateProp('name', this.value, this)">`);
+  h += num('X 位置', 'x'); h += num('Y 位置', 'y');
+  if (el.type !== 'text') { h += num('宽度', 'w'); h += num('高度', 'h'); }
+  if (el.type === 'rect' || el.type === 'circle' || el.type === 'button') h += col('填充色', 'fill');
+  if (el.type === 'rect' || el.type === 'button') h += num('圆角', 'radius', 1);
+  if (el.type === 'text' || el.type === 'button') { h += txt('文本内容', 'text'); h += col('文字颜色', 'color'); h += num('字号', 'fontSize', 1); }
+  if (el.type === 'text' || el.type === 'button') h += sel('对齐', 'align', [{v:'left',l:'左'},{v:'center',l:'中'},{v:'right',l:'右'}]);
+  h += num('透明度 0-1', 'opacity', 0.05);
+  h += num('旋转 度', 'rotation', 1);
+  body.innerHTML = h;
+}
+
+function hexIfPossible(v) {
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+  const m = v.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (m) return '#' + [m[1],m[2],m[3]].map(n => (+n).toString(16).padStart(2,'0')).join('');
+  return '#ffffff';
+}
+
+function updateProp(key, val, input) {
+  const el = elements.find(e => e.id === selectedId);
+  if (!el) return;
+  el[key] = val;
+  render();
+}
+
+/* ═══════════════════ 画布平移 / 缩放（Pointer + Wheel） ═══════════════════ */
+let isPanning = false, startX, startY, startVX, startVY;
+const pointers = new Map();
+
+viewportEl.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.01));
+  else { viewport.x -= e.deltaX; viewport.y -= e.deltaY; applyViewport(); }
+}, { passive: false });
+
+viewportEl.addEventListener('pointerdown', e => {
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 2) { isPanning = false; return; } // 捏合交给 move
+  const target = e.target.closest('.elm');
+  if (target) { return; } // 元素拖拽在 element 层处理
+  isPanning = true;
+  startX = e.clientX; startY = e.clientY; startVX = viewport.x; startVY = viewport.y;
+  viewportEl.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+
+let pinchStartDist = 0, pinchStartScale = 1, pinchMid = null;
+viewportEl.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  // 双指捏合缩放
+  if (pointers.size === 2) {
+    const p = [...pointers.values()];
+    const dist = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+    if (!pinchStartDist) {
+      pinchStartDist = dist; pinchStartScale = viewport.scale;
+      pinchMid = { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 };
+    } else {
+      const f = clamp(dist / pinchStartDist, 0.1, 4) / viewport.scale * pinchStartScale;
+      const target = pinchStartScale * (dist / pinchStartDist);
+      viewport.scale = clamp(target, 0.1, 4);
+      const w = screenToWorld(pinchMid.x, pinchMid.y);
+      viewport.x = pinchMid.x - w.x * viewport.scale;
+      viewport.y = pinchMid.y - w.y * viewport.scale;
+      applyViewport();
+    }
+    return;
+  }
+  if (!isPanning) return;
+  viewport.x = startVX + (e.clientX - startX);
+  viewport.y = startVY + (e.clientY - startY);
+  applyViewport();
+});
+
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) { pinchStartDist = 0; }
+  isPanning = false;
+}
+viewportEl.addEventListener('pointerup', endPointer);
+viewportEl.addEventListener('pointercancel', endPointer);
+viewportEl.addEventListener('pointerleave', e => { if (pointers.size === 0) isPanning = false; });
+
+/* ═══════════════════ 元素拖拽 ═══════════════════ */
+let dragEl = null, dragOffsetX = 0, dragOffsetY = 0;
+artboardEl.addEventListener('pointerdown', e => {
+  const elNode = e.target.closest('.elm');
+  if (!elNode) return;
+  e.stopPropagation();
+  const el = elements.find(x => x.id === elNode.dataset.id);
+  if (!el) return;
+  if (currentTool !== 'select') { selectAndTool(el); return; }
+  selectElement(el.id);
+  dragEl = el;
+  const w = screenToWorld(e.clientX, e.clientY);
+  dragOffsetX = w.x - el.x; dragOffsetY = w.y - el.y;
+});
+
+window.addEventListener('pointermove', e => {
+  if (!dragEl) return;
+  const w = screenToWorld(e.clientX, e.clientY);
+  dragEl.x = Math.round(w.x - dragOffsetX);
+  dragEl.y = Math.round(w.y - dragOffsetY);
+  render();
+});
+window.addEventListener('pointerup', () => { dragEl = null; });
+
+/* ═══════════════════ 工具栏与添加元素 ═══════════════════ */
+document.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const t = btn.dataset.tool;
+    if (t === 'delete') { if (selectedId) { elements = elements.filter(e => e.id !== selectedId); selectedId = null; render(); renderInspector(); } return; }
+    if (t === 'duplicate') {
+      if (!selectedId) return;
+      const src = elements.find(e => e.id === selectedId);
+      const copy = JSON.parse(JSON.stringify(src)); copy.id = uid(); copy.x += 24; copy.y += 24; copy.name = src.name + ' 副本';
+      elements.push(copy); selectElement(copy.id); return;
+    }
+    if (['rect','circle','text','button','image'].includes(t)) { addElement(t); return; }
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTool = t;
+  });
+});
+
+function selectAndTool(el) { selectElement(el.id); }
+
+function addElement(type) {
+  let el;
+  const base = { id: uid(), x: 120, y: 120, w: 200, h: 120, opacity: 1, rotation: 0, z: elements.length + 1 };
+  if (type === 'rect') el = { ...base, name:'矩形', type:'rect', fill:'#d4d4d4', radius:12 };
+  if (type === 'circle') el = { ...base, name:'圆形', type:'circle', w:120, h:120, fill:'#d4d4d4' };
+  if (type === 'text') el = { ...base, name:'文本', type:'text', w:200, h:40, text:'双击或右键编辑文本 — 打一行字', fontSize:18, color:'#111111', align:'left' };
+  if (type === 'button') el = { ...base, name:'按钮', type:'button', w:160, h:48, text:'按钮', fill:'#111111', color:'#ffffff', radius:24, fontSize:15 };
+  if (type === 'image') { $('fileInput').click(); return; }
+  elements.push(el);
+  selectElement(el.id);
+}
+
+$('fileInput').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    elements.push({ id: uid(), name:'图片', type:'image', x:120, y:120, w:260, h:180, src: reader.result, objectFit:'cover', opacity:1, rotation:0, z: elements.length+1 });
+    selectElement(elements[elements.length-1].id);
+  };
+  reader.readAsDataURL(f);
+});
+
+/* ═══════════════════ 选择与交互绑定 ═══════════════════ */
+function selectElement(id) { selectedId = id; currentTool = 'select'; document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); document.querySelector('[data-tool=select]').classList.add('active'); render(); renderInspector(); }
+viewportEl.addEventListener('click', e => { if (!e.target.closest('.elm')) { selectedId = null; render(); renderInspector(); } });
+
+/* ═══════════════════ 顶部控件 ═══════════════════ */
+$('zoomIn').onclick = () => { const r = viewportEl.getBoundingClientRect(); zoomAt(r.left + r.width/2, r.top + r.height/2, 1.2); };
+$('zoomOut').onclick = () => { const r = viewportEl.getBoundingClientRect(); zoomAt(r.left + r.width/2, r.top + r.height/2, 1/1.2); };
+$('zoomFit').onclick = fitView;
+$('themeToggle').onclick = () => document.body.classList.toggle('dark');
+$('glassToggle').onclick = () => document.body.classList.toggle('no-glass');
+
+/* ═══════════════════ 初始化 ═══════════════════ */
+seed();
+fitView();
+render();
+renderInspector();
+window.addEventListener('resize', fitView);
+
+/* ═══════════════════ 导出管线 ─ PNG / HTML / ZIP（客户端） ═══════════════════ */
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function downloadText(text, filename) {
+  downloadBlob(new Blob([text], { type: 'text/html;charset=utf-8' }), filename);
+}
+
+/* PNG 导出使用 html2canvas 克隆画板 DOM（离屏，不带选中态） */
+function exportPNG(cb) {
+  const clone = artboardEl.cloneNode(true);
+  clone.classList.add('export-clone');
+  clone.querySelectorAll('.elm.selected').forEach(n => n.classList.remove('selected'));
+  Object.assign(clone.style, { position: 'fixed', left: '-99999px', top: 0, zIndex: -1, boxShadow: 'none' });
+  document.body.appendChild(clone);
+  html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false })
+    .then(canvas => canvas.toBlob(b => { clone.remove(); cb(b); }, 'image/png'))
+    .catch(() => { clone.remove(); cb(null); });
+}
+
+/* HTML 导出：序列化元素为独立单文件（Tailwind CDN 引用） */
+function exportHTML() {
+  const ordered = elements.slice().sort((a,b) => (a.z||0)-(b.z||0));
+  const bodyDivs = ordered.map(el => {
+    const s = stylesFromLayer(el);
+    const st = Object.entries({ ...s, ...textStyle(el) }).map(([k,v]) => `${k}:${v}`).join(';');
+    const content = el.type === 'image' && el.src
+      ? `<img src="${el.src}" style="width:100%;height:100%;object-fit:${el.objectFit||'cover'};border-radius:${el.radius||0}px"/>`
+      : esc(innerMarkup(el));
+    return `<div style="${st}">${content}</div>`;
+  }).join('\n    ');
+
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>${esc(currentDocName())}</title>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<style>
+  html,body{margin:0;height:100%}
+  body{background:#efefef;display:grid;place-items:center;font-family:'Inter','PingFang SC',sans-serif}
+  .board{position:relative;width:${AB.w}px;height:${AB.h}px;background:#fff;box-shadow:0 24px 60px rgba(0,0,0,.15);overflow:hidden}
+</style>
+</head>
+<body>
+  <div class="board">
+    ${bodyDivs}
+  </div>
+</body>
+</html>`;
+  downloadText(html, currentDocName() + '.html');
+}
+function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function currentDocName() { return '我的设计'; }
+
+/* ZIP 导出：index.html + PNG 预览 + manifest */
+async function exportZIP() {
+  const zip = new JSZip();
+  const html = buildHTMLString();
+  zip.file('index.html', html);
+  zip.file('preview.png', await pngBlob());
+  zip.file('manifest.json', JSON.stringify({
+    name: currentDocName(), width: AB.w, height: AB.h,
+    layerCount: elements.length, exportedAt: new Date().toISOString(),
+    stack: 'TailwindCSS · 低代码设计平台',
+  }, null, 2));
+  const blob = await zip.generateAsync({ type: 'blob' });
+  downloadBlob(blob, currentDocName() + '.zip');
+}
+function buildHTMLString() {
+  // 复用 exportHTML 的内部逻辑
+  const ordered = elements.slice().sort((a,b) => (a.z||0)-(b.z||0));
+  const bodyDivs = ordered.map(el => {
+    const s = stylesFromLayer(el);
+    const st = Object.entries({ ...s, ...textStyle(el) }).map(([k,v]) => `${k}:${v}`).join(';');
+    const content = el.type === 'image' && el.src
+      ? `<img src="${el.src}" style="width:100%;height:100%;object-fit:cover"/>`
+      : esc(innerMarkup(el));
+    return `<div style="${st}">${content}</div>`;
+  }).join('\n    ');
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>${esc(currentDocName())}</title>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<style>html,body{margin:0;height:100%}body{background:#efefef;display:grid;place-items:center;font-family:'Inter','PingFang SC',sans-serif}.board{position:relative;width:${AB.w}px;height:${AB.h}px;background:#fff;box-shadow:0 24px 60px rgba(0,0,0,.15);overflow:hidden}</style>
+</head>
+<body><div class="board">${bodyDivs}</div></body>
+</html>`;
+}
+function pngBlob() {
+  return new Promise(resolve => {
+    const clone = artboardEl.cloneNode(true);
+    clone.querySelectorAll('.elm.selected').forEach(n => n.classList.remove('selected'));
+    Object.assign(clone.style, { position: 'fixed', left: '-99999px', top: 0, zIndex: -1, boxShadow: 'none' });
+    document.body.appendChild(clone);
+    html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false })
+      .then(canvas => canvas.toBlob(b => { clone.remove(); resolve(b); }, 'image/png'))
+      .catch(() => { clone.remove(); resolve(null); });
+  });
+}
+
+$('btnPng').onclick = () => {
+  const tmp = selectedId; selectedId = null; render();
+  exportPNG(b => { selectedId = tmp; render(); if (b) downloadBlob(b, currentDocName() + '.png'); });
+};
+$('btnHtml').onclick = exportHTML;
+$('btnZip').onclick = exportZIP;
+</script>
+</body>
+</html>
