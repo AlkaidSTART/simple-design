@@ -1,4 +1,9 @@
-export type LayerType = 'rect' | 'circle' | 'text' | 'button' | 'image';
+export type LayerType = 'rect' | 'circle' | 'text' | 'button' | 'image' | 'brush';
+
+export interface DrawPoint {
+  x: number;
+  y: number;
+}
 
 export interface Layer {
   id: string;
@@ -19,6 +24,9 @@ export interface Layer {
   fontWeight?: number;
   align?: 'left' | 'center' | 'right';
   src?: string;
+  points?: DrawPoint[];
+  stroke?: string;
+  strokeWidth?: number;
 }
 
 export interface Template {
@@ -41,6 +49,8 @@ export interface CanvasDocument {
   id: string;
   projectId: string;
   name: string;
+  width: number;
+  height: number;
   layers: Layer[];
   viewport: ViewportState;
   createdAt: string;
@@ -48,9 +58,15 @@ export interface CanvasDocument {
 }
 
 export interface WorkspaceSettings {
-  theme: 'dawn' | 'dusk';
+  theme: 'liquid' | 'ivory';
   glassEnabled: boolean;
 }
+
+export const DEFAULT_CANVAS_WIDTH = 1280;
+export const DEFAULT_CANVAS_HEIGHT = 800;
+export const MIN_CANVAS_WIDTH = 240;
+export const MIN_CANVAS_HEIGHT = 160;
+export const MAX_CANVAS_DIMENSION = 4096;
 
 export interface ViewportState {
   x: number;

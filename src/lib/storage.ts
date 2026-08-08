@@ -1,4 +1,5 @@
 import { starterLayers } from '../data/templates';
+import { DEFAULT_CANVAS_HEIGHT, DEFAULT_CANVAS_WIDTH } from '../types/design';
 import type { CanvasDocument, Layer, Project, WorkspaceSettings } from '../types/design';
 
 const DB_NAME = 'glassstudio-workspace';
@@ -94,7 +95,12 @@ export const loadWorkspace = async (): Promise<WorkspaceData> => {
   database.close();
 
   if (projects.length > 0 && canvases.length > 0) {
-    return { projects, canvases, settings: settingsRecord?.value, clipboard: clipboardRecord?.value ?? [] };
+    return {
+      projects,
+      canvases: canvases.map((canvas) => ({ ...canvas, width: canvas.width ?? DEFAULT_CANVAS_WIDTH, height: canvas.height ?? DEFAULT_CANVAS_HEIGHT })),
+      settings: settingsRecord?.value,
+      clipboard: clipboardRecord?.value ?? [],
+    };
   }
 
   const legacyDraft = readLegacyDraft();
@@ -104,6 +110,8 @@ export const loadWorkspace = async (): Promise<WorkspaceData> => {
     id: `canvas-${Date.now()}`,
     projectId: project.id,
     name: legacyDraft?.documentName ?? '首张画布',
+    width: DEFAULT_CANVAS_WIDTH,
+    height: DEFAULT_CANVAS_HEIGHT,
     layers: Array.isArray(legacyDraft?.layers) ? legacyDraft.layers : starterLayers.map((layer) => ({ ...layer })),
     viewport: { x: 0, y: 0, scale: 0.8 },
     createdAt: now,

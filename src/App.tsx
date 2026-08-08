@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Circle,
   Copy,
+  Download,
   FileCode2,
   FileArchive,
   FileImage,
@@ -14,21 +15,15 @@ import {
   ImagePlus,
   Layers3,
   Library,
-  Maximize2,
   Minus,
-  Moon,
   MousePointer2,
   Move,
   PanelRight,
+  Pencil,
   Plus,
-  Redo2,
-  Scan,
-  Settings2,
   Sparkles,
-  Sun,
   Trash2,
   Type,
-  Undo2,
   X,
   Zap,
 } from 'lucide-react';
@@ -38,19 +33,19 @@ import { buildHtmlString, buildZip, downloadBlob, downloadText, stylesFromLayer 
 import { fitViewport, screenToWorld, zoomAt, type Point } from './lib/viewport';
 import { loadWorkspace, saveCanvas, saveProject, saveSettings } from './lib/storage';
 import { getSelectedLayer, useDesignStore } from './store/useDesignStore';
-import type { CanvasDocument, Layer, LayerType, Project } from './types/design';
+import { brushPointsToLocal, pointsToSvg } from './lib/brush';
+import { DEFAULT_CANVAS_HEIGHT, DEFAULT_CANVAS_WIDTH, type CanvasDocument, type DrawPoint, type Layer, type LayerType, type Project } from './types/design';
 import './styles.css';
-
-const AB_WIDTH = 1280;
-const AB_HEIGHT = 800;
 
 type Tool = 'select' | 'hand' | LayerType;
 type PointerAction =
   | { kind: 'pan'; start: Point; origin: Point }
   | { kind: 'drag'; start: Point; origins: Record<string, Point>; ids: string[] }
-  | { kind: 'marquee'; start: Point; current: Point };
+  | { kind: 'marquee'; start: Point; current: Point }
+  | { kind: 'brush'; points: DrawPoint[] };
 
 const toolItems: { id: Tool; label: string; icon: typeof MousePointer2 }[] = [
+  { id: 'brush', label: '画笔', icon: Pencil },
   { id: 'select', label: '选择', icon: MousePointer2 },
   { id: 'hand', label: '平移', icon: Hand },
   { id: 'rect', label: '矩形', icon: BoxSelect },
@@ -61,24 +56,31 @@ const toolItems: { id: Tool; label: string; icon: typeof MousePointer2 }[] = [
 ];
 
 const layerTypeLabel: Record<Layer['type'], string> = {
-  rect: '矩形', circle: '圆形', text: '文本', image: '图片', button: '按钮',
+  rect: '矩形', circle: '圆形', text: '文本', image: '图片', button: '按钮', brush: '画笔',
 };
 
 const formatNumber = (value: number | undefined) => Math.round(value ?? 0);
-const isArtboardBackground = (layer: Layer) => layer.x === 0 && layer.y === 0 && layer.width === AB_WIDTH && layer.height === AB_HEIGHT;
-const selectableLayers = (items: Layer[]) => items.filter((layer) => !isArtboardBackground(layer));
+const isArtboardBackground = (layer: Layer, width: number, height: number) => layer.type === 'rect' && layer.x === 0 && layer.y === 0 && layer.width === width && layer.height === height;
+const selectableLayers = (items: Layer[], width: number, height: number) => items.filter((layer) => !isArtboardBackground(layer, width, height));
+const clampPoint = (point: Point, width: number, height: number): DrawPoint => ({
+  x: Math.min(width, Math.max(0, point.x)),
+  y: Math.min(height, Math.max(0, point.y)),
+});
 
 function App() {
   const {
     projects, canvases, activeProjectId, activeCanvasId, documentName, layers, selectedIds, activeTool, viewport,
     theme, glassEnabled, templatesOpen, clipboard, hydrated, savedAt,
     hydrateWorkspace, setDocumentName, setSelectedId, setSelectedIds, setActiveTool, setViewport, updateLayer,
-    addLayer, duplicateSelected, copySelected, pasteClipboard, deleteSelected, selectAll, applyTemplate,
-    createProject, createCanvas, switchProject, switchCanvas, renameProject, renameCanvas, toggleTheme, toggleGlass,
+    addLayer, addBrush, setCanvasSize, duplicateSelected, copySelected, pasteClipboard, deleteSelected, selectAll, applyTemplate,
+    createProject, createCanvas, switchProject, switchCanvas, renameProject, renameCanvas,
     toggleTemplates, markSaved,
   } = useDesignStore();
   const selectedLayer = useDesignStore(getSelectedLayer);
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
+  const activeCanvas = canvases.find((canvas) => canvas.id === activeCanvasId) ?? canvases[0];
+  const canvasWidth = activeCanvas?.width ?? DEFAULT_CANVAS_WIDTH;
+  const canvasHeight = activeCanvas?.height ?? DEFAULT_CANVAS_HEIGHT;
   const viewportRef = useRef<HTMLElement>(null);
   const artboardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,7 +90,10 @@ function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [createDialog, setCreateDialog] = useState<'project' | 'canvas' | null>(null);
   const [marquee, setMarquee] = useState<{ start: Point; current: Point } | null>(null);
+  const [brushPreview, setBrushPreview] = useState<DrawPoint[] | null>(null);
   const marqueeJustFinished = useRef(false);
 
   const notify = useCallback((message: string) => {
@@ -99,8 +104,8 @@ function App() {
   const fit = useCallback(() => {
     const viewportElement = viewportRef.current;
     if (!viewportElement) return;
-    setViewport(fitViewport(viewportElement.clientWidth, viewportElement.clientHeight, AB_WIDTH, AB_HEIGHT));
-  }, [setViewport]);
+    setViewport(fitViewport(viewportElement.clientWidth, viewportElement.clientHeight, canvasWidth, canvasHeight));
+  }, [canvasHeight, canvasWidth, setViewport]);
 
   useEffect(() => {
     if (workspaceLoadStarted.current) return;
@@ -118,7 +123,6 @@ function App() {
 
   useEffect(() => {
     if (!hydrated) return;
-    const activeCanvas = canvases.find((canvas) => canvas.id === activeCanvasId);
     const activeProject = projects.find((project) => project.id === activeProjectId);
     if (!activeCanvas || !activeProject) return;
     const timer = window.setTimeout(() => {
@@ -129,7 +133,7 @@ function App() {
       ]).then(() => markSaved()).catch(() => undefined);
     }, 650);
     return () => window.clearTimeout(timer);
-  }, [activeCanvasId, activeProjectId, canvases, documentName, glassEnabled, hydrated, layers, markSaved, projects, theme, viewport]);
+  }, [activeCanvas, activeCanvasId, activeProjectId, canvases, documentName, glassEnabled, hydrated, layers, markSaved, projects, theme, viewport]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -151,6 +155,10 @@ function App() {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, [fit]);
+
+  useEffect(() => {
+    if (hydrated) fit();
+  }, [canvasHeight, canvasWidth, fit, hydrated]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -181,6 +189,7 @@ function App() {
       if (!editing && event.key === 'Escape') {
         setSelectedId(null);
         setActiveTool('select');
+        setExportMenuOpen(false);
       }
       if (event.key === '?' && !editing) setShowShortcuts((value) => !value);
     };
@@ -192,6 +201,7 @@ function App() {
     const rect = event.currentTarget.getBoundingClientRect();
     const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
       setViewport(zoomAt(point, Math.exp(-event.deltaY * 0.008), viewport));
       return;
     }
@@ -206,10 +216,16 @@ function App() {
     const layerElement = (event.target as HTMLElement).closest<HTMLElement>('[data-layer-id]');
     const layerId = layerElement?.dataset.layerId;
     const layer = layerId ? layers.find((item) => item.id === layerId) : undefined;
-    const selectableLayer = layer && !isArtboardBackground(layer) ? layer : undefined;
+    const selectableLayer = layer && !isArtboardBackground(layer, canvasWidth, canvasHeight) ? layer : undefined;
     const shouldPan = activeTool === 'hand' || event.button === 1 || spacePressed.current;
 
-    if (selectableLayer && activeTool === 'select' && event.button === 0) {
+    if (activeTool === 'brush' && event.button === 0) {
+      const world = screenToWorld(point, viewport);
+      if (world.x < 0 || world.y < 0 || world.x > canvasWidth || world.y > canvasHeight) return;
+      const brushPoint = clampPoint(world, canvasWidth, canvasHeight);
+      pointerAction.current = { kind: 'brush', points: [brushPoint] };
+      setBrushPreview([brushPoint]);
+    } else if (selectableLayer && activeTool === 'select' && event.button === 0) {
       const ids = event.shiftKey
         ? selectedIds.includes(selectableLayer.id) ? selectedIds : [...selectedIds, selectableLayer.id]
         : selectedIds.includes(selectableLayer.id) ? selectedIds : [selectableLayer.id];
@@ -239,10 +255,11 @@ function App() {
     if (!action) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    const delta = { x: point.x - action.start.x, y: point.y - action.start.y };
     if (action.kind === 'pan') {
+      const delta = { x: point.x - action.start.x, y: point.y - action.start.y };
       setViewport({ ...viewport, x: action.origin.x + delta.x, y: action.origin.y + delta.y });
     } else if (action.kind === 'drag') {
+      const delta = { x: point.x - action.start.x, y: point.y - action.start.y };
       action.ids.forEach((id) => {
         const origin = action.origins[id];
         if (origin) updateLayer(id, {
@@ -250,9 +267,17 @@ function App() {
           y: Math.round(origin.y + delta.y / viewport.scale),
         });
       });
-    } else {
+    } else if (action.kind === 'marquee') {
       action.current = point;
       setMarquee({ start: action.start, current: point });
+    } else if (action.kind === 'brush') {
+      const world = screenToWorld(point, viewport);
+      const nextPoint = clampPoint(world, canvasWidth, canvasHeight);
+      const previousPoint = action.points[action.points.length - 1];
+      if (!previousPoint || Math.hypot(nextPoint.x - previousPoint.x, nextPoint.y - previousPoint.y) >= 1) {
+        action.points.push(nextPoint);
+        setBrushPreview([...action.points]);
+      }
     }
   };
 
@@ -263,7 +288,7 @@ function App() {
       const right = Math.max(action.start.x, action.current.x);
       const top = Math.min(action.start.y, action.current.y);
       const bottom = Math.max(action.start.y, action.current.y);
-      const selection = selectableLayers(layers).filter((layer) => {
+      const selection = selectableLayers(layers, canvasWidth, canvasHeight).filter((layer) => {
         const x = viewport.x + layer.x * viewport.scale;
         const y = viewport.y + layer.y * viewport.scale;
         const layerRight = x + layer.width * viewport.scale;
@@ -272,6 +297,12 @@ function App() {
       }).map((layer) => layer.id);
       setSelectedIds(selection);
       setMarquee(null);
+      marqueeJustFinished.current = true;
+      window.setTimeout(() => { marqueeJustFinished.current = false; }, 0);
+    }
+    if (action?.kind === 'brush') {
+      addBrush(action.points);
+      setBrushPreview(null);
       marqueeJustFinished.current = true;
       window.setTimeout(() => { marqueeJustFinished.current = false; }, 0);
     }
@@ -320,14 +351,14 @@ function App() {
   };
 
   const exportHtml = () => {
-    downloadText(buildHtmlString(layers, documentName), `${documentName}.html`);
+    downloadText(buildHtmlString(layers, documentName, canvasWidth, canvasHeight), `${documentName}.html`);
     notify('HTML 已下载');
   };
 
   const exportZip = async () => {
     notify('正在整理资源包…');
     try {
-      downloadBlob(await buildZip(layers, documentName), `${documentName}.zip`);
+      downloadBlob(await buildZip(layers, documentName, canvasWidth, canvasHeight), `${documentName}.zip`);
       notify('ZIP 资源包已下载');
     } catch {
       notify('ZIP 导出失败，请稍后重试');
@@ -341,7 +372,7 @@ function App() {
   };
 
   return (
-    <div className={`app-shell ${theme === 'dawn' ? 'theme-dawn' : 'theme-dusk'} ${glassEnabled ? '' : 'no-glass'}`}>
+    <div className={`app-shell ${theme === 'liquid' ? 'theme-liquid' : 'theme-ivory'}`}>
       <header className="topbar glass-panel">
         <button className="brand-lockup" onClick={() => setNavigatorOpen((value) => !value)} title="打开项目与画布" aria-label="打开项目与画布">
           <div className="brand-mark"><img src="/logo.png" alt="" /></div>
@@ -359,20 +390,16 @@ function App() {
           <span className="document-subtitle">{activeProject?.name ?? '未命名项目'} <span>/</span> {layers.length} layers</span>
         </div>
         <div className="topbar-spacer" />
-        <div className="history-controls" aria-label="历史记录">
-          <button className="icon-button muted" title="撤销（即将支持）" aria-label="撤销"><Undo2 size={16} /></button>
-          <button className="icon-button muted" title="重做（即将支持）" aria-label="重做"><Redo2 size={16} /></button>
-        </div>
-        <ZoomControl scale={viewport.scale} zoomBy={zoomBy} fit={fit} />
         <div className="top-actions">
-          <button className="icon-button" onClick={toggleGlass} title={glassEnabled ? '关闭毛玻璃增强' : '开启毛玻璃增强'} aria-label="切换毛玻璃"><Scan size={16} /></button>
-          <button className="icon-button" onClick={toggleTheme} title={theme === 'dusk' ? '切换晨间模式' : '切换昏暗模式'} aria-label="切换主题">{theme === 'dusk' ? <Sun size={16} /> : <Moon size={16} />}</button>
           <button className="help-button" onClick={() => setShowShortcuts((value) => !value)} aria-label="打开快捷键"><span>?</span><kbd>⌘ /</kbd></button>
-          <div className="export-quick-actions">
-            <button className="quick-export" onClick={exportPng} title="导出 2x PNG"><FileImage size={13} /> <span>PNG</span></button>
-            <button className="quick-export" onClick={exportHtml} title="导出独立 HTML"><FileCode2 size={13} /> <span>HTML</span></button>
+          <div className="export-menu-wrap">
+            <button className="export-main" onClick={() => setExportMenuOpen((value) => !value)} aria-expanded={exportMenuOpen} aria-haspopup="menu"><Download size={15} /> <span>导出</span> <ChevronDown size={13} /></button>
+            {exportMenuOpen && <div className="export-menu glass-panel" data-canvas-ui role="menu">
+              <button onClick={() => { setExportMenuOpen(false); void exportPng(); }} role="menuitem"><FileImage size={15} /><span><strong>PNG 图片</strong><small>2x 高清画布</small></span></button>
+              <button onClick={() => { setExportMenuOpen(false); exportHtml(); }} role="menuitem"><FileCode2 size={15} /><span><strong>HTML 页面</strong><small>可直接打开的网页</small></span></button>
+              <button onClick={() => { setExportMenuOpen(false); void exportZip(); }} role="menuitem"><FileArchive size={15} /><span><strong>资源包</strong><small>HTML 与图片资源</small></span></button>
+            </div>}
           </div>
-          <button className="export-main" onClick={exportZip}><FileArchive size={15} /> <span>导出资源包</span> <ChevronDown size={13} /></button>
         </div>
         {navigatorOpen && <WorkspaceNavigator
           projects={projects}
@@ -380,8 +407,8 @@ function App() {
           activeProjectId={activeProjectId}
           activeCanvasId={activeCanvasId}
           onClose={() => setNavigatorOpen(false)}
-          onNewProject={() => { createProject(); notify('已创建新项目'); }}
-          onNewCanvas={() => { createCanvas(); notify('已创建新画布'); }}
+          onNewProject={() => setCreateDialog('project')}
+          onNewCanvas={() => setCreateDialog('canvas')}
           onDuplicateCanvas={() => { createCanvas(`${documentName} copy`, true); notify('已复制当前画布'); }}
           onProjectSelect={(id) => { switchProject(id); }}
           onCanvasSelect={(id) => { switchCanvas(id); setNavigatorOpen(false); }}
@@ -403,32 +430,36 @@ function App() {
           aria-label="设计画布"
         >
           <div className="canvas-toolbar glass-panel" data-canvas-ui>
-            <span className="canvas-mode"><span className="live-indicator" /> LIVE CANVAS</span>
+            <span className="canvas-mode"><span className="live-indicator" /> 画布</span>
             <span className="canvas-divider" />
-            <span className="canvas-hint">按住空格拖动</span>
+            <span className="canvas-hint">正在编辑</span>
+          </div>
+          <div className="canvas-zoom glass-panel" data-canvas-ui>
+            <ZoomControl scale={viewport.scale} zoomBy={zoomBy} fit={fit} />
           </div>
           <div
             className="world"
             style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}
           >
-            <div ref={artboardRef} className="artboard" onClick={handleCanvasClick}>
-              <div className="artboard-ruler ruler-top"><span>0</span><span>320</span><span>640</span><span>960</span><span>1280</span></div>
-              <div className="artboard-ruler ruler-left"><span>0</span><span>200</span><span>400</span><span>600</span><span>800</span></div>
+            <div ref={artboardRef} className="artboard" onClick={handleCanvasClick} style={{ width: canvasWidth, height: canvasHeight }}>
+              <div className="artboard-ruler ruler-top"><span>0</span><span>{Math.round(canvasWidth / 4)}</span><span>{Math.round(canvasWidth / 2)}</span><span>{Math.round(canvasWidth * 0.75)}</span><span>{canvasWidth}</span></div>
+              <div className="artboard-ruler ruler-left"><span>0</span><span>{Math.round(canvasHeight / 4)}</span><span>{Math.round(canvasHeight / 2)}</span><span>{Math.round(canvasHeight * 0.75)}</span><span>{canvasHeight}</span></div>
               {layers.map((layer) => (
                 <CanvasLayer key={layer.id} layer={layer} selected={selectedIds.includes(layer.id)} />
               ))}
+              {brushPreview && <BrushStroke points={brushPreview} preview canvasWidth={canvasWidth} canvasHeight={canvasHeight} />}
             </div>
           </div>
           {marquee && <SelectionMarquee start={marquee.start} current={marquee.current} />}
           <div className="canvas-footer glass-panel" data-canvas-ui>
-            <span><Move size={13} /> <b>{Math.round(viewport.scale * 100)}%</b></span>
+            <span><Move size={13} /> <b>画布</b></span>
             <span className="canvas-footer-divider" />
-            <span>1280 × 800 px</span>
-            <button onClick={fit} title="适配画板" aria-label="适配画板"><Maximize2 size={13} /></button>
+            <span>{canvasWidth} × {canvasHeight} px</span>
           </div>
+          <ExportReminder />
           {templatesOpen && <TemplateRail onClose={toggleTemplates} applyTemplate={applyTemplate} />}
         </section>
-        <Inspector layer={selectedLayer} selectedCount={selectedIds.length} updateLayer={updateLayer} onDelete={deleteSelected} onDuplicate={duplicateSelected} onCopy={copySelected} onPaste={pasteClipboard} canPaste={clipboard.length > 0} />
+        <Inspector layer={selectedLayer} selectedCount={selectedIds.length} updateLayer={updateLayer} canvasWidth={canvasWidth} canvasHeight={canvasHeight} onCanvasSizeChange={setCanvasSize} onDelete={deleteSelected} onDuplicate={duplicateSelected} onCopy={copySelected} onPaste={pasteClipboard} canPaste={clipboard.length > 0} />
       </div>
 
       <footer className="statusbar glass-panel">
@@ -440,26 +471,62 @@ function App() {
       <input ref={fileInputRef} onChange={handleFileChange} type="file" accept="image/*" hidden />
       {toast && <div className="toast"><Check size={15} /> {toast}</div>}
       {showShortcuts && <Shortcuts onClose={() => setShowShortcuts(false)} />}
+      {createDialog && <CreateDialog type={createDialog} onClose={() => setCreateDialog(null)} onCreate={(name, width, height) => {
+        if (createDialog === 'project') createProject(name, width, height);
+        else createCanvas(name, false, width, height);
+        setCreateDialog(null);
+        notify(createDialog === 'project' ? '已创建自定义项目' : '已创建自定义画布');
+      }} />}
     </div>
   );
 }
 
 function ZoomControl({ scale, zoomBy, fit }: { scale: number; zoomBy: (factor: number) => void; fit: () => void }) {
   return (
-    <div className="zoom-control" aria-label="缩放控制">
-      <button onClick={() => zoomBy(0.9)} title="缩小" aria-label="缩小"><Minus size={14} /></button>
-      <button className="zoom-value" onClick={fit} title="适配画板">{Math.round(scale * 100)}%</button>
-      <button onClick={() => zoomBy(1.1)} title="放大" aria-label="放大"><Plus size={14} /></button>
+    <div className="zoom-control" aria-label="画布缩放">
+      <button onClick={() => zoomBy(0.9)} title="缩小画布" aria-label="缩小画布"><Minus size={14} /></button>
+      <button className="zoom-value" onClick={fit} title="适配画布" aria-label={`当前画布缩放 ${Math.round(scale * 100)}%，点击适配画布`}>{Math.round(scale * 100)}%</button>
+      <button onClick={() => zoomBy(1.1)} title="放大画布" aria-label="放大画布"><Plus size={14} /></button>
     </div>
   );
 }
 
+function ExportReminder() {
+  return <div className="export-reminder" data-canvas-ui role="note" aria-label="完成设计后，记得及时导出">
+    <div className="export-reminder-window">
+      <div className="export-reminder-track">
+        <ExportReminderItems />
+        <ExportReminderItems ariaHidden />
+      </div>
+    </div>
+  </div>;
+}
+
+function ExportReminderItems({ ariaHidden = false }: { ariaHidden?: boolean }) {
+  return <div className="export-reminder-items" aria-hidden={ariaHidden}>
+    <span><Download size={13} strokeWidth={2.2} />完成设计后，记得及时导出</span>
+    <i />
+    <span>完成设计后，记得及时导出</span>
+    <i />
+    <span>完成设计后，记得及时导出</span>
+  </div>;
+}
+
 function Toolbar({ activeTool, setActiveTool, toggleTemplates }: { activeTool: Tool; setActiveTool: (tool: Tool) => void; toggleTemplates: () => void }) {
   return (
-    <aside className="left-toolbar glass-panel" aria-label="工具栏">
-      <div className="toolbar-group">
-        <span className="toolbar-label">CREATE</span>
-        {toolItems.map(({ id, label, icon: Icon }) => (
+    <aside className="left-toolbar glass-panel" aria-label="工具栏" role="toolbar">
+      <div className="toolbar-group toolbar-navigation">
+        <span className="toolbar-label">编辑</span>
+        {toolItems.filter(({ id }) => id === 'select' || id === 'hand').map(({ id, label, icon: Icon }) => (
+          <button key={id} className={`tool-button ${activeTool === id ? 'is-active' : ''}`} onClick={() => setActiveTool(id)} title={label} aria-label={label}>
+            <Icon size={18} strokeWidth={activeTool === id ? 2.3 : 1.7} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="toolbar-group toolbar-create">
+        <span className="toolbar-label">添加</span>
+        {toolItems.filter(({ id }) => id !== 'select' && id !== 'hand').map(({ id, label, icon: Icon }) => (
           <button key={id} className={`tool-button ${activeTool === id ? 'is-active' : ''}`} onClick={() => setActiveTool(id)} title={label} aria-label={label}>
             <Icon size={18} strokeWidth={activeTool === id ? 2.3 : 1.7} />
             <span>{label}</span>
@@ -469,7 +536,6 @@ function Toolbar({ activeTool, setActiveTool, toggleTemplates }: { activeTool: T
       <div className="toolbar-bottom">
         <div className="toolbar-rule" />
         <button className="tool-button" onClick={toggleTemplates} title="打开模板库" aria-label="打开模板库"><Layers3 size={18} /><span>模板</span></button>
-        <button className="tool-button" title="工作台设置" aria-label="工作台设置"><Settings2 size={18} /><span>设置</span></button>
       </div>
     </aside>
   );
@@ -481,7 +547,23 @@ function CanvasLayer({ layer, selected }: { layer: Layer; selected: boolean }) {
   if (layer.type === 'image') {
     return <img data-layer-id={layer.id} className={className} style={style as CSSProperties} src={layer.src} alt={layer.name} draggable={false} />;
   }
+  if (layer.type === 'brush') return <BrushStroke layer={layer} selected={selected} />;
   return <div data-layer-id={layer.id} className={className} style={style as CSSProperties}>{layer.text}</div>;
+}
+
+function BrushStroke({ layer, points, preview, selected = false, canvasWidth = 1, canvasHeight = 1 }: { layer?: Layer; points?: DrawPoint[]; preview?: boolean; selected?: boolean; canvasWidth?: number; canvasHeight?: number }) {
+  const localPoints = layer ? brushPointsToLocal(layer) : points ?? [];
+  const style = layer ? stylesFromLayer(layer) : { left: 0, top: 0, width: '100%', height: '100%' };
+  return <svg
+    data-layer-id={layer?.id}
+    className={`canvas-layer layer-brush ${selected ? 'is-selected' : ''} ${preview ? 'brush-preview' : ''}`}
+    style={style as CSSProperties}
+    viewBox={`0 0 ${layer ? Math.max(layer.width, 1) : canvasWidth} ${layer ? Math.max(layer.height, 1) : canvasHeight}`}
+    preserveAspectRatio="none"
+    aria-label={layer?.name ?? '正在绘制'}
+  >
+    <polyline points={pointsToSvg(localPoints)} fill="none" stroke={layer?.stroke ?? '#315f59'} strokeWidth={layer?.strokeWidth ?? 8} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+  </svg>;
 }
 
 function SelectionMarquee({ start, current }: { start: Point; current: Point }) {
@@ -536,21 +618,23 @@ function WorkspaceNavigator({
   </div>;
 }
 
-function Inspector({ layer, selectedCount, updateLayer, onDelete, onDuplicate, onCopy, onPaste, canPaste }: { layer?: Layer; selectedCount: number; updateLayer: (id: string, patch: Partial<Layer>) => void; onDelete: () => void; onDuplicate: () => void; onCopy: () => void; onPaste: () => void; canPaste: boolean }) {
+function Inspector({ layer, selectedCount, updateLayer, canvasWidth, canvasHeight, onCanvasSizeChange, onDelete, onDuplicate, onCopy, onPaste, canPaste }: { layer?: Layer; selectedCount: number; updateLayer: (id: string, patch: Partial<Layer>) => void; canvasWidth: number; canvasHeight: number; onCanvasSizeChange: (width: number, height: number) => void; onDelete: () => void; onDuplicate: () => void; onCopy: () => void; onPaste: () => void; canPaste: boolean }) {
   if (!layer) {
-    return <aside className="inspector glass-panel empty-inspector"><div className="panel-heading"><div><span className="eyebrow">INSPECTOR</span><h2>属性检查器</h2></div><PanelRight size={16} /></div><div className="empty-state"><div className="empty-icon"><BoxSelect size={20} /></div><strong>{selectedCount > 1 ? `已选择 ${selectedCount} 个图层` : '选择一个图层'}</strong><p>{selectedCount > 1 ? '使用 ⌘ C / ⌘ V 复制粘贴选中的对象。' : '点击画布中的对象，编辑它的位置、尺寸和视觉样式。'}</p></div><div className="inspector-note"><Sparkles size={14} /><span>拖动画布空白处，可以框选多个对象。</span></div></aside>;
+    return <aside className="inspector glass-panel empty-inspector"><div className="panel-heading"><div><span className="eyebrow">INSPECTOR</span><h2>属性检查器</h2></div><PanelRight size={16} /></div><div className="inspector-scroll"><CanvasSizeFields key={`${canvasWidth}-${canvasHeight}`} width={canvasWidth} height={canvasHeight} onChange={onCanvasSizeChange} /><div className="empty-state"><div className="empty-icon"><BoxSelect size={20} /></div><strong>{selectedCount > 1 ? `已选择 ${selectedCount} 个图层` : '选择一个图层'}</strong><p>{selectedCount > 1 ? '使用 ⌘ C / ⌘ V 复制粘贴选中的对象。' : '点击画布中的对象，编辑它的位置、尺寸和视觉样式。'}</p></div><div className="inspector-note"><Sparkles size={14} /><span>拖动画布空白处，可以框选多个对象。</span></div></div></aside>;
   }
-  const numeric = (key: 'x' | 'y' | 'width' | 'height' | 'rotation' | 'opacity' | 'fontSize', label: string, suffix = '') => (
+  const numeric = (key: 'x' | 'y' | 'width' | 'height' | 'rotation' | 'opacity' | 'fontSize' | 'strokeWidth', label: string, suffix = '') => (
     <label className="field"><span>{label}</span><div className="field-input"><input type="number" value={key === 'opacity' ? Math.round((layer[key] ?? 1) * 100) : formatNumber(layer[key])} min={key === 'opacity' ? 0 : undefined} max={key === 'opacity' ? 100 : undefined} onChange={(event) => updateLayer(layer.id, { [key]: key === 'opacity' ? Number(event.target.value) / 100 : Number(event.target.value) })} /><em>{suffix}</em></div></label>
   );
   return (
     <aside className="inspector glass-panel">
       <div className="panel-heading"><div><span className="eyebrow">INSPECTOR / {layerTypeLabel[layer.type]}</span><h2>{layer.name}</h2></div><button className="icon-button small" onClick={onDelete} title="删除图层" aria-label="删除图层"><Trash2 size={15} /></button></div>
       <div className="inspector-scroll">
+        <CanvasSizeFields key={`${canvasWidth}-${canvasHeight}`} width={canvasWidth} height={canvasHeight} onChange={onCanvasSizeChange} />
         {selectedCount > 1 && <div className="selection-summary"><BoxSelect size={14} /><strong>已选择 {selectedCount} 个图层</strong></div>}
         <section className="inspector-section"><span className="section-label">布局 / LAYOUT</span><div className="field-grid">{numeric('x', 'X', 'px')}{numeric('y', 'Y', 'px')}{numeric('width', 'W', 'px')}{numeric('height', 'H', 'px')}</div><div className="field-grid">{numeric('rotation', '旋转', '°')}{numeric('opacity', '不透明', '%')}</div></section>
         {(layer.type === 'rect' || layer.type === 'circle' || layer.type === 'button') && <section className="inspector-section"><span className="section-label">外观 / APPEARANCE</span><ColorField label="填充" value={layer.fill ?? '#17191b'} onChange={(fill) => updateLayer(layer.id, { fill })} /><div className="field-grid single-line">{<label className="field"><span>圆角</span><div className="field-input"><input type="number" min="0" value={formatNumber(layer.radius)} onChange={(event) => updateLayer(layer.id, { radius: Number(event.target.value) })} /><em>px</em></div></label>}<label className="toggle-field"><input type="checkbox" checked={Boolean(layer.blur)} onChange={(event) => updateLayer(layer.id, { blur: event.target.checked })} /><span className="fake-toggle" /><span>玻璃效果</span></label></div></section>}
         {(layer.type === 'text' || layer.type === 'button') && <section className="inspector-section"><span className="section-label">排版 / TYPE</span><label className="field full-field"><span>内容</span><textarea value={layer.text ?? ''} onChange={(event) => updateLayer(layer.id, { text: event.target.value })} rows={3} /></label><ColorField label="文字颜色" value={layer.color ?? '#17191b'} onChange={(color) => updateLayer(layer.id, { color })} /><div className="field-grid">{numeric('fontSize', '字号', 'px')}<label className="field"><span>字重</span><div className="field-input"><select value={layer.fontWeight ?? 500} onChange={(event) => updateLayer(layer.id, { fontWeight: Number(event.target.value) })}><option value="400">Regular</option><option value="500">Medium</option><option value="600">Semibold</option><option value="700">Bold</option></select></div></label></div></section>}
+        {layer.type === 'brush' && <section className="inspector-section"><span className="section-label">画笔 / BRUSH</span><ColorField label="笔触颜色" value={layer.stroke ?? '#315f59'} onChange={(stroke) => updateLayer(layer.id, { stroke })} />{numeric('strokeWidth', '笔触粗细', 'px')}</section>}
         {layer.type === 'image' && <section className="inspector-section"><span className="section-label">资源 / ASSET</span><div className="asset-preview"><img src={layer.src} alt="" /></div><button className="secondary-button" onClick={() => document.querySelector<HTMLInputElement>('input[type=file]')?.click()}><ImagePlus size={14} /> 更换图片</button></section>}
         <section className="inspector-section action-section"><button className="secondary-button" onClick={onCopy}><Copy size={14} /> 复制选中 <span>⌘ C</span></button><button className="secondary-button" onClick={onPaste} disabled={!canPaste}><ChevronRight size={14} /> 粘贴图层 <span>⌘ V</span></button><button className="secondary-button" onClick={onDuplicate}><Copy size={14} /> 快速复制 <span>⌘ D</span></button><button className="danger-button" onClick={onDelete}><Trash2 size={14} /> 删除选中</button></section>
       </div>
@@ -558,8 +642,35 @@ function Inspector({ layer, selectedCount, updateLayer, onDelete, onDuplicate, o
   );
 }
 
+function CanvasSizeFields({ width, height, onChange }: { width: number; height: number; onChange: (width: number, height: number) => void }) {
+  const [nextWidth, setNextWidth] = useState(width);
+  const [nextHeight, setNextHeight] = useState(height);
+  const commit = () => onChange(nextWidth, nextHeight);
+  return <section className="inspector-section canvas-size-section"><span className="section-label">画布 / CANVAS</span><div className="field-grid"><label className="field"><span>宽度</span><div className="field-input"><input type="number" min="240" max="4096" value={nextWidth} onChange={(event) => setNextWidth(Number(event.target.value))} onBlur={commit} /><em>px</em></div></label><label className="field"><span>高度</span><div className="field-input"><input type="number" min="160" max="4096" value={nextHeight} onChange={(event) => setNextHeight(Number(event.target.value))} onBlur={commit} /><em>px</em></div></label></div><span className="canvas-size-caption">{width} × {height} · 可随时调整</span></section>;
+}
+
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="color-field"><span>{label}</span><div className="color-control"><input type="color" value={value.startsWith('#') ? value : '#ffffff'} onChange={(event) => onChange(event.target.value)} /><input value={value} onChange={(event) => onChange(event.target.value)} aria-label={`${label}色值`} /></div></label>;
+}
+
+function CreateDialog({ type, onClose, onCreate }: { type: 'project' | 'canvas'; onClose: () => void; onCreate: (name: string, width: number, height: number) => void }) {
+  const [name, setName] = useState(type === 'project' ? '新项目' : '新画布');
+  const [width, setWidth] = useState(DEFAULT_CANVAS_WIDTH);
+  const [height, setHeight] = useState(DEFAULT_CANVAS_HEIGHT);
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    onCreate(name.trim() || (type === 'project' ? '新项目' : '新画布'), width, height);
+  };
+  return <div className="dialog-overlay" onClick={onClose}>
+    <form className="create-dialog glass-panel" onSubmit={submit} onClick={(event) => event.stopPropagation()}>
+      <div className="dialog-heading"><div><span className="eyebrow">NEW {type === 'project' ? 'PROJECT' : 'CANVAS'}</span><h2>{type === 'project' ? '新建项目' : '新建画布'}</h2></div><button type="button" className="icon-button small" onClick={onClose} title="关闭" aria-label="关闭"><X size={15} /></button></div>
+      <div className="create-dialog-fields">
+        <label className="field full-field"><span>名称</span><div className="field-input"><input autoFocus value={name} onChange={(event) => setName(event.target.value)} /></div></label>
+        <div className="field-grid"><label className="field"><span>宽度</span><div className="field-input"><input type="number" min="240" max="4096" required value={width} onChange={(event) => setWidth(Number(event.target.value))} /><em>px</em></div></label><label className="field"><span>高度</span><div className="field-input"><input type="number" min="160" max="4096" required value={height} onChange={(event) => setHeight(Number(event.target.value))} /><em>px</em></div></label></div>
+      </div>
+      <div className="create-dialog-actions"><button type="button" className="navigator-secondary" onClick={onClose}>取消</button><button type="submit" className="navigator-primary"><Plus size={14} /> 创建</button></div>
+    </form>
+  </div>;
 }
 
 function TemplateRail({ onClose, applyTemplate }: { onClose: () => void; applyTemplate: (id: string) => void }) {

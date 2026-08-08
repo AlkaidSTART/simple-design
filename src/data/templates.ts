@@ -10,17 +10,17 @@ const layer = (base: Omit<Layer, 'id' | 'rotation' | 'opacity'> & Partial<Pick<L
 });
 
 export const starterLayers: Layer[] = [
-  layer({ type: 'rect', name: '墨色背景', x: 0, y: 0, width: 1280, height: 800, fill: '#17191b', radius: 0 }),
-  layer({ type: 'rect', name: '黄色信号条', x: 72, y: 72, width: 8, height: 112, fill: '#f0c93d', radius: 4 }),
-  layer({ type: 'text', name: '眉题', x: 110, y: 76, width: 380, height: 24, text: 'GLASSSTUDIO / 001', fontSize: 13, fontWeight: 700, color: '#f0c93d', align: 'left' }),
-  layer({ type: 'text', name: '主标题', x: 110, y: 138, width: 610, height: 148, text: '从想法\n到成品。', fontSize: 72, fontWeight: 700, color: '#f7f4ec', align: 'left' }),
-  layer({ type: 'text', name: '说明', x: 114, y: 332, width: 400, height: 58, text: '把灵感变成可交付的界面、代码和资产。\n一个工作台，完成最后一公里。', fontSize: 16, fontWeight: 400, color: '#a9aaa7', align: 'left' }),
-  layer({ type: 'button', name: '开始设计', x: 112, y: 458, width: 164, height: 48, text: '开始设计  →', fontSize: 14, fontWeight: 700, color: '#17191b', fill: '#f0c93d', radius: 2, align: 'center' }),
-  layer({ type: 'rect', name: '预览画面', x: 774, y: 116, width: 380, height: 500, fill: '#d9d5c8', radius: 0 }),
-  layer({ type: 'rect', name: '预览内框', x: 804, y: 146, width: 320, height: 440, fill: '#eeebe3', radius: 0 }),
-  layer({ type: 'text', name: '预览文字', x: 838, y: 206, width: 250, height: 90, text: 'MAKE\nSPACE', fontSize: 42, fontWeight: 700, color: '#17191b', align: 'left' }),
-  layer({ type: 'rect', name: '预览色块', x: 838, y: 376, width: 250, height: 104, fill: '#f0c93d', radius: 0, rotation: -5 }),
-  layer({ type: 'text', name: '页码', x: 838, y: 528, width: 250, height: 20, text: 'A CREATIVE WORKSPACE  /  24', fontSize: 11, fontWeight: 700, color: '#5c5d59', align: 'left' }),
+  layer({ type: 'rect', name: '薄荷背景', x: 0, y: 0, width: 1280, height: 800, fill: '#d8ebe4', radius: 0 }),
+  layer({ type: 'rect', name: '金色信号条', x: 72, y: 72, width: 8, height: 112, fill: '#dc9b39', radius: 4 }),
+  layer({ type: 'text', name: '眉题', x: 110, y: 76, width: 380, height: 24, text: 'GLASSSTUDIO / 001', fontSize: 13, fontWeight: 700, color: '#2e756b', align: 'left' }),
+  layer({ type: 'text', name: '主标题', x: 110, y: 138, width: 610, height: 148, text: '从想法\n到成品。', fontSize: 72, fontWeight: 700, color: '#18332f', align: 'left' }),
+  layer({ type: 'text', name: '说明', x: 114, y: 332, width: 400, height: 58, text: '把灵感变成可交付的界面、代码和资产。\n一个工作台，完成最后一公里。', fontSize: 16, fontWeight: 400, color: '#58736e', align: 'left' }),
+  layer({ type: 'button', name: '开始设计', x: 112, y: 458, width: 164, height: 48, text: '开始设计  →', fontSize: 14, fontWeight: 700, color: '#f8fcf8', fill: '#2e756b', radius: 8, align: 'center' }),
+  layer({ type: 'rect', name: '预览画面', x: 774, y: 116, width: 380, height: 500, fill: '#c4ddd4', radius: 18 }),
+  layer({ type: 'rect', name: '预览内框', x: 804, y: 146, width: 320, height: 440, fill: '#f8fcf8', radius: 12 }),
+  layer({ type: 'text', name: '预览文字', x: 838, y: 206, width: 250, height: 90, text: 'MAKE\nSPACE', fontSize: 42, fontWeight: 700, color: '#18332f', align: 'left' }),
+  layer({ type: 'rect', name: '预览色块', x: 838, y: 376, width: 250, height: 104, fill: '#dc9b39', radius: 12, rotation: -5 }),
+  layer({ type: 'text', name: '页码', x: 838, y: 528, width: 250, height: 20, text: 'A CREATIVE WORKSPACE  /  24', fontSize: 11, fontWeight: 700, color: '#58736e', align: 'left' }),
 ];
 
 export const templates: Template[] = [
