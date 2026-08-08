@@ -30,19 +30,21 @@ import {
 import { toPng } from 'html-to-image';
 import { templates } from './data/templates';
 import { buildHtmlString, buildZip, downloadBlob, downloadText, stylesFromLayer } from './lib/export';
-import { fitViewport, screenToWorld, zoomAt, type Point } from './lib/viewport';
+import { fitViewport, pinchViewport, screenToWorld, zoomAt, type PinchPoints, type Point } from './lib/viewport';
 import { loadWorkspace, saveCanvas, saveProject, saveSettings } from './lib/storage';
 import { getSelectedLayer, useDesignStore } from './store/useDesignStore';
 import { brushPointsToLocal, pointsToSvg } from './lib/brush';
-import { DEFAULT_CANVAS_HEIGHT, DEFAULT_CANVAS_WIDTH, type CanvasDocument, type DrawPoint, type Layer, type LayerType, type Project } from './types/design';
+import { DEFAULT_CANVAS_HEIGHT, DEFAULT_CANVAS_WIDTH, type CanvasDocument, type DesignTool, type DrawPoint, type Layer, type LayerType, type Project, type ViewportState } from './types/design';
 import './styles.css';
 
-type Tool = 'select' | 'hand' | LayerType;
+type Tool = DesignTool;
 type PointerAction =
   | { kind: 'pan'; start: Point; origin: Point }
   | { kind: 'drag'; start: Point; origins: Record<string, Point>; ids: string[] }
   | { kind: 'marquee'; start: Point; current: Point }
   | { kind: 'brush'; points: DrawPoint[] };
+
+type TouchGesture = { start: PinchPoints; viewport: ViewportState };
 
 const toolItems: { id: Tool; label: string; icon: typeof MousePointer2 }[] = [
   { id: 'brush', label: '画笔', icon: Pencil },
@@ -67,6 +69,12 @@ const clampPoint = (point: Point, width: number, height: number): DrawPoint => (
   y: Math.min(height, Math.max(0, point.y)),
 });
 
+const getPinchPoints = (pointers: Map<number, Point>): PinchPoints | null => {
+  const points = [...pointers.values()];
+  if (points.length < 2) return null;
+  return { first: points[0], second: points[1] };
+};
+
 function App() {
   const {
     projects, canvases, activeProjectId, activeCanvasId, documentName, layers, selectedIds, activeTool, viewport,
@@ -85,6 +93,9 @@ function App() {
   const artboardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pointerAction = useRef<PointerAction | null>(null);
+  const touchPointers = useRef(new Map<number, Point>());
+  const touchGesture = useRef<TouchGesture | null>(null);
+  const touchGestureConsumed = useRef(false);
   const spacePressed = useRef(false);
   const workspaceLoadStarted = useRef(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -129,11 +140,11 @@ function App() {
       Promise.all([
         ...canvases.map((canvas) => saveCanvas(canvas.id === activeCanvasId ? { ...canvas, name: documentName, layers, viewport } : canvas)),
         ...projects.map((project) => saveProject(project)),
-        saveSettings({ theme, glassEnabled }),
+        saveSettings({ theme, glassEnabled, activeTool }),
       ]).then(() => markSaved()).catch(() => undefined);
     }, 650);
     return () => window.clearTimeout(timer);
-  }, [activeCanvas, activeCanvasId, activeProjectId, canvases, documentName, glassEnabled, hydrated, layers, markSaved, projects, theme, viewport]);
+  }, [activeCanvas, activeCanvasId, activeProjectId, activeTool, canvases, documentName, glassEnabled, hydrated, layers, markSaved, projects, theme, viewport]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -213,6 +224,27 @@ function App() {
     if ((event.target as HTMLElement).closest('[data-canvas-ui]')) return;
     const rect = viewportElement.getBoundingClientRect();
     const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    const isTouch = event.pointerType === 'touch';
+
+    if (isTouch) {
+      touchPointers.current.set(event.pointerId, point);
+      if (touchPointers.current.size >= 2) {
+        const pinch = getPinchPoints(touchPointers.current);
+        if (pinch) {
+          touchGesture.current = { start: pinch, viewport };
+          touchGestureConsumed.current = true;
+          pointerAction.current = null;
+          setMarquee(null);
+          setBrushPreview(null);
+          event.preventDefault();
+          viewportElement.setPointerCapture(event.pointerId);
+          return;
+        }
+      } else {
+        touchGestureConsumed.current = false;
+      }
+    }
+
     const layerElement = (event.target as HTMLElement).closest<HTMLElement>('[data-layer-id]');
     const layerId = layerElement?.dataset.layerId;
     const layer = layerId ? layers.find((item) => item.id === layerId) : undefined;
@@ -223,6 +255,7 @@ function App() {
       const world = screenToWorld(point, viewport);
       if (world.x < 0 || world.y < 0 || world.x > canvasWidth || world.y > canvasHeight) return;
       const brushPoint = clampPoint(world, canvasWidth, canvasHeight);
+      setSelectedIds([]);
       pointerAction.current = { kind: 'brush', points: [brushPoint] };
       setBrushPreview([brushPoint]);
     } else if (selectableLayer && activeTool === 'select' && event.button === 0) {
@@ -232,9 +265,9 @@ function App() {
       setSelectedIds(ids);
       const origins = Object.fromEntries(layers.filter((item) => ids.includes(item.id)).map((item) => [item.id, { x: item.x, y: item.y }]));
       pointerAction.current = { kind: 'drag', start: point, origins, ids };
-    } else if (shouldPan) {
+    } else if (shouldPan || (isTouch && !selectableLayer && activeTool === 'select')) {
       pointerAction.current = { kind: 'pan', start: point, origin: { x: viewport.x, y: viewport.y } };
-    } else if (!selectableLayer && activeTool === 'select') {
+    } else if (!selectableLayer && activeTool === 'select' && !isTouch) {
       pointerAction.current = { kind: 'marquee', start: point, current: point };
       setMarquee({ start: point, current: point });
     } else if (!selectableLayer && ['rect', 'circle', 'text', 'button'].includes(activeTool)) {
@@ -247,14 +280,27 @@ function App() {
     } else {
       return;
     }
+    if (isTouch) event.preventDefault();
     viewportElement.setPointerCapture(event.pointerId);
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
-    const action = pointerAction.current;
-    if (!action) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    if (event.pointerType === 'touch') {
+      touchPointers.current.set(event.pointerId, point);
+      const gesture = touchGesture.current;
+      const pinch = getPinchPoints(touchPointers.current);
+      if (gesture && pinch) {
+        setViewport(pinchViewport(gesture.start, pinch, gesture.viewport));
+        event.preventDefault();
+        return;
+      }
+      if (touchGestureConsumed.current) return;
+      event.preventDefault();
+    }
+    const action = pointerAction.current;
+    if (!action) return;
     if (action.kind === 'pan') {
       const delta = { x: point.x - action.start.x, y: point.y - action.start.y };
       setViewport({ ...viewport, x: action.origin.x + delta.x, y: action.origin.y + delta.y });
@@ -282,6 +328,25 @@ function App() {
   };
 
   const stopPointerAction = (event: ReactPointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'touch') {
+      touchPointers.current.delete(event.pointerId);
+      if (touchGesture.current) {
+        touchGesture.current = null;
+        pointerAction.current = null;
+        setMarquee(null);
+        setBrushPreview(null);
+        touchGestureConsumed.current = true;
+        try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* pointer was already released */ }
+        if (touchPointers.current.size === 0) touchGestureConsumed.current = false;
+        return;
+      }
+      if (touchGestureConsumed.current) {
+        pointerAction.current = null;
+        try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* pointer was already released */ }
+        if (touchPointers.current.size === 0) touchGestureConsumed.current = false;
+        return;
+      }
+    }
     const action = pointerAction.current;
     if (action?.kind === 'marquee') {
       const left = Math.min(action.start.x, action.current.x);
@@ -300,12 +365,13 @@ function App() {
       marqueeJustFinished.current = true;
       window.setTimeout(() => { marqueeJustFinished.current = false; }, 0);
     }
-    if (action?.kind === 'brush') {
+    if (action?.kind === 'brush' && event.type !== 'pointercancel') {
       addBrush(action.points);
       setBrushPreview(null);
       marqueeJustFinished.current = true;
       window.setTimeout(() => { marqueeJustFinished.current = false; }, 0);
     }
+    if (action?.kind === 'brush' && event.type === 'pointercancel') setBrushPreview(null);
     pointerAction.current = null;
     try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* pointer was already released */ }
   };
@@ -314,6 +380,12 @@ function App() {
     if (marqueeJustFinished.current) return;
     if (event.target !== event.currentTarget) return;
     setSelectedIds([]);
+  };
+
+  const handleViewportDoubleClick = (event: React.MouseEvent<HTMLElement>) => {
+    if (!['select', 'hand'].includes(activeTool) || (event.target as HTMLElement).closest('[data-canvas-ui]')) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    setViewport(zoomAt({ x: event.clientX - rect.left, y: event.clientY - rect.top }, 1.4, viewport));
   };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -423,6 +495,7 @@ function App() {
           ref={viewportRef}
           className={`canvas-viewport ${activeTool === 'hand' ? 'is-hand' : ''}`}
           onWheel={handleViewportWheel}
+          onDoubleClick={handleViewportDoubleClick}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={stopPointerAction}

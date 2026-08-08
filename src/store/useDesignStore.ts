@@ -3,7 +3,7 @@ import { starterLayers, templates } from '../data/templates';
 import { getBrushBounds } from '../lib/brush';
 import { saveCanvas, saveClipboard, saveProject } from '../lib/storage';
 import { DEFAULT_CANVAS_HEIGHT, DEFAULT_CANVAS_WIDTH, MAX_CANVAS_DIMENSION, MIN_CANVAS_HEIGHT, MIN_CANVAS_WIDTH } from '../types/design';
-import type { CanvasDocument, DrawPoint, Layer, LayerType, Project, ViewportState, WorkspaceSettings } from '../types/design';
+import type { CanvasDocument, DesignTool, DrawPoint, Layer, LayerType, Project, ViewportState, WorkspaceSettings } from '../types/design';
 
 const cloneLayers = (layers: Layer[]) => layers.map((layer) => ({ ...layer }));
 const now = () => new Date().toISOString();
@@ -17,6 +17,8 @@ const initialCanvas: CanvasDocument = {
 };
 const normalizeDimension = (value: number | undefined, fallback: number, minimum: number) => Math.min(MAX_CANVAS_DIMENSION, Math.max(minimum, Math.round(Number.isFinite(value) ? value! : fallback)));
 const isArtboardBackground = (layer: Layer, width: number, height: number) => layer.type === 'rect' && layer.x === 0 && layer.y === 0 && layer.width === width && layer.height === height;
+const designTools: DesignTool[] = ['select', 'hand', 'brush', 'rect', 'circle', 'text', 'image', 'button'];
+const isDesignTool = (value: unknown): value is DesignTool => typeof value === 'string' && designTools.includes(value as DesignTool);
 
 interface DesignState {
   projects: Project[];
@@ -26,7 +28,7 @@ interface DesignState {
   documentName: string;
   layers: Layer[];
   selectedIds: string[];
-  activeTool: LayerType | 'select' | 'hand';
+  activeTool: DesignTool;
   viewport: ViewportState;
   theme: 'liquid' | 'ivory';
   glassEnabled: boolean;
@@ -120,6 +122,7 @@ export const useDesignStore = create<DesignState>((set, get) => ({
       viewport: canvas.viewport,
       theme: settings?.theme === 'ivory' ? 'ivory' : 'liquid',
       glassEnabled: settings?.glassEnabled ?? true,
+      activeTool: isDesignTool(settings?.activeTool) ? settings.activeTool : 'select',
       clipboard: cloneLayers(clipboard),
       hydrated: true,
       savedAt: '已从本地恢复',
@@ -144,7 +147,7 @@ export const useDesignStore = create<DesignState>((set, get) => ({
     const layer = newLayer(type, x, y);
     set((state) => {
       const layers = [...state.layers, layer];
-      return { layers, selectedIds: [layer.id], activeTool: 'select', ...currentCanvasPatch(state, { layers }) };
+      return { layers, selectedIds: [layer.id], ...currentCanvasPatch(state, { layers }) };
     });
     return layer.id;
   },
@@ -158,7 +161,7 @@ export const useDesignStore = create<DesignState>((set, get) => ({
     };
     set((state) => {
       const layers = [...state.layers, layer];
-      return { layers, selectedIds: [layer.id], activeTool: 'select', ...currentCanvasPatch(state, { layers }) };
+      return { layers, selectedIds: [], ...currentCanvasPatch(state, { layers }) };
     });
     return layer.id;
   },

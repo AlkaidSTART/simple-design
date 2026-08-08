@@ -1,4 +1,5 @@
 export type LayerType = 'rect' | 'circle' | 'text' | 'button' | 'image' | 'brush';
+export type DesignTool = LayerType | 'select' | 'hand';
 
 export interface DrawPoint {
   x: number;
@@ -60,6 +61,7 @@ export interface CanvasDocument {
 export interface WorkspaceSettings {
   theme: 'liquid' | 'ivory';
   glassEnabled: boolean;
+  activeTool?: DesignTool;
 }
 
 export const DEFAULT_CANVAS_WIDTH = 1280;
