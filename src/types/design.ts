@@ -30,6 +30,28 @@ export interface Template {
   layers: Layer[];
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CanvasDocument {
+  id: string;
+  projectId: string;
+  name: string;
+  layers: Layer[];
+  viewport: ViewportState;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkspaceSettings {
+  theme: 'dawn' | 'dusk';
+  glassEnabled: boolean;
+}
+
 export interface ViewportState {
   x: number;
   y: number;
