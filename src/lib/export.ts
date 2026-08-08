@@ -1,5 +1,7 @@
 import JSZip from 'jszip';
+import { DEFAULT_CANVAS_HEIGHT, DEFAULT_CANVAS_WIDTH } from '../types/design';
 import type { Layer } from '../types/design';
+import { brushPointsToLocal, pointsToSvg } from './brush';
 
 const escapeHtml = (value: string | undefined) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
   '&': '&amp;',
@@ -56,12 +58,15 @@ const layerMarkup = (layer: Layer) => {
   if (layer.type === 'image') {
     return `<img alt="${escapeHtml(layer.name)}" src="${escapeHtml(layer.src)}" style="${styleString(layer)}"/>`;
   }
+  if (layer.type === 'brush') {
+    return `<svg aria-label="${escapeHtml(layer.name)}" style="${styleString(layer)};overflow:visible"><polyline points="${pointsToSvg(brushPointsToLocal(layer))}" fill="none" stroke="${escapeHtml(layer.stroke ?? '#315f59')}" stroke-width="${layer.strokeWidth ?? 8}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
   return `<div style="${styleString(layer)}">${escapeHtml(layer.text)}</div>`;
 };
 
-export const buildHtmlString = (layers: Layer[], name: string) => `<!doctype html>
+export const buildHtmlString = (layers: Layer[], name: string, width = DEFAULT_CANVAS_WIDTH, height = DEFAULT_CANVAS_HEIGHT) => `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${escapeHtml(name)}</title>
-<style>html,body{margin:0;background:#151719;color:#f7f4ec;font-family:ui-sans-serif,system-ui,sans-serif}.artboard{position:relative;width:1280px;height:800px;overflow:hidden;background:#f7f4ec;color:#151719}</style></head>
+<style>html,body{margin:0;background:#dfe8e2;color:#172724;font-family:ui-sans-serif,system-ui,sans-serif}.artboard{position:relative;width:${width}px;height:${height}px;overflow:hidden;background:#f9fcf7;color:#172724}</style></head>
 <body><main class="artboard">${layers.filter((layer) => layer.opacity > 0).map(layerMarkup).join('')}</main></body></html>`;
 
 export const downloadBlob = (blob: Blob, filename: string) => {
@@ -77,9 +82,9 @@ export const downloadText = (content: string, filename: string) => {
   downloadBlob(new Blob([content], { type: 'text/html;charset=utf-8' }), filename);
 };
 
-export const buildZip = async (layers: Layer[], name: string) => {
+export const buildZip = async (layers: Layer[], name: string, width = DEFAULT_CANVAS_WIDTH, height = DEFAULT_CANVAS_HEIGHT) => {
   const zip = new JSZip();
-  zip.file('index.html', buildHtmlString(layers, name));
-  zip.file('manifest.json', JSON.stringify({ name, width: 1280, height: 800, layerCount: layers.length, exportedAt: new Date().toISOString() }, null, 2));
+  zip.file('index.html', buildHtmlString(layers, name, width, height));
+  zip.file('manifest.json', JSON.stringify({ name, width, height, layerCount: layers.length, exportedAt: new Date().toISOString() }, null, 2));
   return zip.generateAsync({ type: 'blob' });
 };
