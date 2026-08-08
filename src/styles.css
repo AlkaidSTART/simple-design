@@ -57,9 +57,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .no-glass .glass-panel { background: var(--glass-strong); backdrop-filter: none; -webkit-backdrop-filter: none; }
 
 .topbar { height: 62px; flex: 0 0 62px; display: flex; align-items: center; gap: 20px; padding: 0 18px; position: relative; z-index: 10; }
-.brand-lockup { display: flex; align-items: center; gap: 10px; min-width: 160px; }
-.brand-mark { width: 30px; height: 30px; background: var(--signal); color: var(--ink); display: grid; place-items: center; position: relative; font-size: 15px; font-weight: 800; letter-spacing: -0.04em; }
-.brand-dot { width: 5px; height: 5px; background: var(--ink); position: absolute; right: 5px; top: 5px; border-radius: 50%; }
+.brand-lockup { display: flex; align-items: center; gap: 10px; min-width: 160px; padding: 0; color: var(--text); background: transparent; text-align: left; }
+.brand-mark { width: 30px; height: 30px; display: grid; place-items: center; position: relative; overflow: hidden; background: var(--paper); }
+.brand-mark img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.theme-dusk .brand-mark img { filter: invert(1); }
+.brand-chevron { margin-left: -4px; color: var(--muted); }
 .brand-copy { display: grid; gap: 2px; line-height: 1; }
 .brand-copy strong { font-size: 13px; letter-spacing: -0.025em; }
 .brand-copy span, .eyebrow, .section-label, .toolbar-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.12em; color: var(--muted); }
@@ -112,6 +114,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .canvas-layer { position: absolute; box-sizing: border-box; cursor: move; user-select: none; }
 .canvas-layer.is-selected { outline: 1px solid var(--ink); box-shadow: 0 0 0 3px var(--signal), 0 0 0 5px rgba(23, 25, 27, 0.55); z-index: 9999 !important; }
 .artboard.is-exporting .canvas-layer.is-selected { outline: none; box-shadow: none; }
+.selection-marquee { position: absolute; z-index: 10001; pointer-events: none; border: 1px solid var(--signal); background: rgba(240, 201, 61, 0.14); }
 .layer-text { white-space: pre-wrap; }
 .layer-button { cursor: pointer; }
 .layer-image { display: block; }
@@ -201,6 +204,22 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .shortcut-overlay { position: fixed; inset: 0; z-index: 25; display: grid; place-items: center; background: rgba(0, 0, 0, 0.44); }
 .shortcut-dialog { width: 330px; padding: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.4); animation: panel-in 180ms ease-out; }
 .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 13px; border-bottom: 1px solid var(--ui-border); }.shortcut-list { display: grid; gap: 2px; padding-top: 10px; }.shortcut-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; color: var(--muted); font-size: 11px; }.shortcut-row div { display: flex; gap: 4px; }.shortcut-row kbd { min-width: 24px; padding: 4px 6px; text-align: center; color: var(--text); border: 1px solid var(--ui-border); background: var(--field); font: 9px 'DM Mono', monospace; }
+.workspace-navigator { position: absolute; z-index: 20; top: 55px; left: 15px; width: 338px; padding: 16px; box-shadow: 0 18px 50px var(--shadow); animation: panel-in 180ms ease-out; }
+.navigator-heading { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 13px; border-bottom: 1px solid var(--ui-border); }
+.navigator-heading h2 { margin: 5px 0 0; color: var(--text); font-size: 14px; letter-spacing: -0.025em; }
+.navigator-actions { display: grid; grid-template-columns: 1.15fr 1fr; gap: 7px; padding: 13px 0; }
+.navigator-primary, .navigator-secondary { height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10px; font-weight: 700; }
+.navigator-primary { background: var(--signal); color: var(--ink); }
+.navigator-secondary { background: var(--field); color: var(--text); }
+.navigator-primary:hover { background: #f5d85f; }.navigator-secondary:hover { background: var(--field-hover); }
+.navigator-list { display: grid; gap: 8px; max-height: 350px; overflow-y: auto; }
+.project-entry { padding: 5px; background: var(--field); border: 1px solid transparent; }.project-entry.is-active { border-color: rgba(240, 201, 61, .4); }
+.project-row { width: 100%; height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 5px; color: var(--text); background: transparent; text-align: left; }.project-row:hover { background: var(--field-hover); }.project-select-button { display: flex; align-items: center; gap: 7px; color: inherit; background: transparent; }.project-select-button svg:last-child { color: var(--muted); }
+.project-row input, .canvas-entry input { min-width: 0; flex: 1; border: 0; outline: 0; color: inherit; background: transparent; font-size: 10px; font-weight: 700; }.project-row input:focus, .canvas-entry input:focus { border-bottom: 1px solid var(--signal); }
+.canvas-list { display: grid; gap: 2px; padding: 3px 0 3px 25px; }.canvas-entry { display: flex; align-items: center; gap: 3px; }.canvas-select-button { width: 25px; height: 27px; flex: 0 0 25px; display: grid; place-items: center; padding: 0; color: var(--muted); background: transparent; }.canvas-select-button:hover, .canvas-entry.is-active .canvas-select-button { color: var(--text); background: var(--field-hover); }.canvas-entry.is-active .canvas-select-button { box-shadow: inset 2px 0 0 var(--signal); }.canvas-entry-mark { width: 6px; height: 6px; border: 1px solid currentColor; border-radius: 50%; }.canvas-entry.is-active .canvas-entry-mark { background: var(--signal); border-color: var(--signal); }.canvas-name-input { min-width: 0; flex: 1; height: 27px; padding: 0 6px; color: var(--muted) !important; font-size: 10px !important; font-weight: 500 !important; }.canvas-name-input:hover, .canvas-name-input:focus, .canvas-entry.is-active .canvas-name-input { color: var(--text) !important; background: var(--field-hover); }.canvas-duplicate-button { width: 25px; height: 25px; display: grid; place-items: center; color: var(--muted); background: transparent; }.canvas-duplicate-button:hover { color: var(--text); background: var(--field-hover); }
+.navigator-note { margin: 13px 2px 0; color: var(--faint); font-size: 9px; line-height: 1.5; }
+.selection-summary { display: flex; align-items: center; gap: 7px; padding: 9px; margin-bottom: 14px; color: var(--text); background: var(--field); border-left: 2px solid var(--signal); font-size: 10px; }.selection-summary svg { color: var(--signal); }
+.secondary-button:disabled { opacity: .4; cursor: not-allowed; }
 @keyframes panel-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
 

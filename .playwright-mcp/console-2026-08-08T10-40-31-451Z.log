@@ -61,3 +61,233 @@
 [   18458ms] [ERROR] Unable to preventDefault inside passive event listener invocation. @ http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2112
 [   18474ms] [ERROR] Unable to preventDefault inside passive event listener invocation. @ http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2112
 [   68552ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:14333
+[ 2478591ms] [ERROR] The result of getSnapshot should be cached to avoid an infinite loop @ http://127.0.0.1:5173/@vite/client:528
+[ 2478605ms] ReferenceError: selectedId is not defined
+    at http://127.0.0.1:5173/src/App.tsx?t=1786188110009:769:22
+    at Array.map (<anonymous>)
+    at App (http://127.0.0.1:5173/src/App.tsx?t=1786188110009:767:18)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12864:12)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4211:19)
+    at updateFunctionComponent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:5567:16)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6138:20)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:8427:92)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:8323:37)
+[ 2478604ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 2549569ms] ReferenceError: selectedId is not defined
+    at http://127.0.0.1:5173/src/App.tsx?t=1786188180964:805:22
+    at Array.map (<anonymous>)
+    at App (http://127.0.0.1:5173/src/App.tsx?t=1786188180964:803:18)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12864:12)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4211:19)
+    at updateFunctionComponent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:5567:16)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6138:20)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:8427:92)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:8323:37)
+[ 2549568ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 2593917ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 2593915ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 2647192ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 2647192ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 2707734ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 2707729ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 2774267ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:14333
+[ 2774288ms] [ERROR] The result of getSnapshot should be cached to avoid an infinite loop @ http://127.0.0.1:5173/@vite/client:528
+[ 2774536ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 2774534ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 2909159ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:5173/@vite/client:998
+[ 2909381ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:14333
+[ 2909401ms] [ERROR] The result of getSnapshot should be cached to avoid an infinite loop @ http://127.0.0.1:5173/@vite/client:528
+[ 2909633ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 2909631ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 3006283ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 3006283ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 3006451ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 3006451ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 3066728ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 3066725ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 3159265ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 3159264ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 3249876ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 3249873ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 3293497ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 3293494ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
+[ 3586845ms] Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+    at getRootForUpdatedFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2631:166)
+    at enqueueConcurrentRenderForLane (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:2621:11)
+    at forceStoreRerender (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4579:15)
+    at updateStoreInstance (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:4561:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:12900:13)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:850:66)
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6615:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:6650:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7616:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=01708265:7604:5)
+[ 3586845ms] [WARNING] %s
+
+%s
+ An error occurred in the <App> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:528
