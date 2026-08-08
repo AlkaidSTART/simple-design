@@ -61,17 +61,49 @@ jobs:
               return;
             }
 
-            if (comparison.data.status === 'diverged' || comparison.data.status === 'behind') {
-              core.setFailed(`Cannot promote dev to main: branches are ${comparison.data.status}.`);
+            if (comparison.data.status === 'behind') {
+              core.setFailed('Cannot promote dev to main: dev is behind main.');
               return;
             }
 
-            const merge = await github.rest.repos.merge({
-              owner,
-              repo,
-              base: 'main',
-              head: 'dev',
-              commit_message: 'chore: promote dev to main',
-            });
+            let merge;
+            try {
+              merge = await github.rest.repos.merge({
+                owner,
+                repo,
+                base: 'main',
+                head: 'dev',
+                commit_message: 'chore: promote dev to main',
+              });
+            } catch (error) {
+              if (error.status !== 409 || comparison.data.status !== 'diverged') {
+                throw error;
+              }
+
+              // The repository was previously squash-merged, so the branches
+              // can have equivalent content but unrelated commit ancestry.
+              // Preserve both histories and use the tested dev tree as the
+              // resolved result for this promotion.
+              const [mainCommit, devCommit] = await Promise.all([
+                github.rest.repos.getCommit({ owner, repo, ref: 'main' }),
+                github.rest.repos.getCommit({ owner, repo, ref: 'dev' }),
+              ]);
+              const mergeCommit = await github.rest.git.createCommit({
+                owner,
+                repo,
+                message: 'chore: promote dev to main',
+                tree: devCommit.data.commit.tree.sha,
+                parents: [mainCommit.data.sha, devCommit.data.sha],
+              });
+              await github.rest.git.updateRef({
+                owner,
+                repo,
+                ref: 'heads/main',
+                sha: mergeCommit.data.sha,
+                force: false,
+              });
+              core.info(`Created a promotion merge commit at ${mergeCommit.data.sha}.`);
+              return;
+            }
 
             core.info(`Merged dev into main at ${merge.data.sha}.`);
