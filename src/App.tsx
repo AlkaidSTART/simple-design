@@ -74,6 +74,7 @@ function App() {
   const artboardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pointerAction = useRef<PointerAction | null>(null);
+  const spacePressed = useRef(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -114,6 +115,21 @@ function App() {
     }, 850);
     return () => window.clearTimeout(timer);
   }, [documentName, layers, markSaved]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'Space') spacePressed.current = true;
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.code === 'Space') spacePressed.current = false;
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
 
   useEffect(() => {
     const onResize = () => fit();
@@ -161,7 +177,7 @@ function App() {
     const layerElement = (event.target as HTMLElement).closest<HTMLElement>('[data-layer-id]');
     const layerId = layerElement?.dataset.layerId;
     const layer = layerId ? layers.find((item) => item.id === layerId) : undefined;
-    const shouldPan = activeTool === 'hand' || event.button === 1;
+    const shouldPan = activeTool === 'hand' || event.button === 1 || spacePressed.current;
 
     if (layer && activeTool === 'select' && event.button === 0) {
       setSelectedId(layer.id);
@@ -213,8 +229,13 @@ function App() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const id = addLayer('image', 180, 160);
-      updateLayer(id, { name: file.name.replace(/\.[^/.]+$/, ''), src: String(reader.result) });
+      const imageName = file.name.replace(/\.[^/.]+$/, '');
+      if (selectedLayer?.type === 'image') {
+        updateLayer(selectedLayer.id, { name: imageName, src: String(reader.result) });
+      } else {
+        const id = addLayer('image', 180, 160);
+        updateLayer(id, { name: imageName, src: String(reader.result) });
+      }
       notify('图片已加入画板');
     };
     reader.readAsDataURL(file);
@@ -224,6 +245,7 @@ function App() {
   const exportPng = async () => {
     if (!artboardRef.current) return;
     notify('正在生成 2x PNG…');
+    artboardRef.current.classList.add('is-exporting');
     try {
       const dataUrl = await toPng(artboardRef.current, { pixelRatio: 2, cacheBust: true });
       const response = await fetch(dataUrl);
@@ -231,6 +253,8 @@ function App() {
       notify('PNG 已下载');
     } catch {
       notify('PNG 导出失败，请稍后重试');
+    } finally {
+      artboardRef.current?.classList.remove('is-exporting');
     }
   };
 
