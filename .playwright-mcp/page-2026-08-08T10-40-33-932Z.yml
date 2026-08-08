@@ -1,0 +1,153 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: G
+      - generic [ref=e9]:
+        - strong [ref=e10]: GlassStudio
+        - generic [ref=e11]: DESIGN TO DELIVER
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - textbox "设计名称" [ref=e14]: Untitled / 001
+        - generic "本地自动保存" [ref=e15]
+      - generic [ref=e16]: Untitled workspace / 11 layers
+    - generic "历史记录" [ref=e17]:
+      - button "撤销" [ref=e18] [cursor=pointer]
+      - button "重做" [ref=e22] [cursor=pointer]
+    - generic "缩放控制" [ref=e26]:
+      - button "缩小" [ref=e27] [cursor=pointer]
+      - button "56%" [ref=e29] [cursor=pointer]
+      - button "放大" [ref=e30] [cursor=pointer]
+    - generic [ref=e32]:
+      - button "切换毛玻璃" [ref=e33] [cursor=pointer]
+      - button "切换主题" [ref=e39] [cursor=pointer]
+      - button "打开快捷键" [ref=e46] [cursor=pointer]:
+        - generic [ref=e47]: "?"
+        - generic [ref=e48]: ⌘ /
+      - generic [ref=e49]:
+        - button "PNG" [ref=e50] [cursor=pointer]
+        - button "HTML" [ref=e57] [cursor=pointer]
+      - button "导出资源包" [ref=e64] [cursor=pointer]
+  - generic [ref=e72]:
+    - complementary "工具栏" [ref=e73]:
+      - generic [ref=e74]:
+        - generic [ref=e75]: CREATE
+        - button "选择" [ref=e76] [cursor=pointer]
+        - button "平移" [ref=e80] [cursor=pointer]
+        - button "矩形" [ref=e87] [cursor=pointer]
+        - button "圆形" [ref=e94] [cursor=pointer]
+        - button "文本" [ref=e98] [cursor=pointer]
+        - button "图片" [ref=e102] [cursor=pointer]
+        - button "按钮" [ref=e108] [cursor=pointer]
+      - generic [ref=e112]:
+        - button "打开模板库" [ref=e114] [cursor=pointer]:
+          - generic [ref=e119]: 模板
+        - button "工作台设置" [ref=e120] [cursor=pointer]:
+          - generic [ref=e124]: 设置
+    - region "设计画布" [ref=e125]:
+      - generic [ref=e126]:
+        - generic [ref=e127]: LIVE CANVAS
+        - generic [ref=e130]: 按住空格拖动
+      - generic [ref=e132]:
+        - generic:
+          - generic: "0"
+          - generic: "320"
+          - generic: "640"
+          - generic: "960"
+          - generic: "1280"
+        - generic:
+          - generic: "0"
+          - generic: "200"
+          - generic: "400"
+          - generic: "600"
+          - generic: "800"
+        - generic [ref=e135]: GLASSSTUDIO / 001
+        - generic [ref=e136]: 从想法 到成品。
+        - generic [ref=e137]: 把灵感变成可交付的界面、代码和资产。 一个工作台，完成最后一公里。
+        - generic [ref=e138] [cursor=pointer]: 开始设计 →
+        - generic [ref=e141]: MAKE SPACE
+        - generic [ref=e143]: A CREATIVE WORKSPACE / 24
+      - generic [ref=e144]:
+        - generic [ref=e145]: 56%
+        - generic [ref=e153]: 1280 × 800 px
+        - button "适配画板" [ref=e154] [cursor=pointer]
+    - complementary [ref=e160]:
+      - generic [ref=e161]:
+        - generic [ref=e162]:
+          - generic [ref=e163]: INSPECTOR / 文本
+          - heading "主标题" [level=2] [ref=e164]
+        - button "删除图层" [ref=e165] [cursor=pointer]
+      - generic [ref=e169]:
+        - generic [ref=e170]:
+          - generic [ref=e171]: 布局 / LAYOUT
+          - generic [ref=e172]:
+            - generic [ref=e173]:
+              - generic [ref=e174]: X
+              - generic [ref=e175]:
+                - spinbutton "X px" [ref=e176]: "110"
+                - emphasis [ref=e177]: px
+            - generic [ref=e178]:
+              - generic [ref=e179]: "Y"
+              - generic [ref=e180]:
+                - spinbutton "Y px" [ref=e181]: "138"
+                - emphasis [ref=e182]: px
+            - generic [ref=e183]:
+              - generic [ref=e184]: W
+              - generic [ref=e185]:
+                - spinbutton "W px" [ref=e186]: "610"
+                - emphasis [ref=e187]: px
+            - generic [ref=e188]:
+              - generic [ref=e189]: H
+              - generic [ref=e190]:
+                - spinbutton "H px" [ref=e191]: "148"
+                - emphasis [ref=e192]: px
+          - generic [ref=e193]:
+            - generic [ref=e194]:
+              - generic [ref=e195]: 旋转
+              - generic [ref=e196]:
+                - spinbutton "旋转 °" [ref=e197]: "0"
+                - emphasis [ref=e198]: °
+            - generic [ref=e199]:
+              - generic [ref=e200]: 不透明
+              - generic [ref=e201]:
+                - spinbutton "不透明 %" [ref=e202]: "100"
+                - emphasis [ref=e203]: "%"
+        - generic [ref=e204]:
+          - generic [ref=e205]: 排版 / TYPE
+          - generic [ref=e206]:
+            - generic [ref=e207]: 内容
+            - textbox "内容" [ref=e208]: 从想法 到成品。
+          - generic [ref=e209]:
+            - generic [ref=e210]: 文字颜色
+            - generic [ref=e211]:
+              - 'textbox "文字颜色 #f7f4ec" [ref=e212] [cursor=pointer]': "#f7f4ec"
+              - textbox "文字颜色色值" [ref=e213]: "#f7f4ec"
+          - generic [ref=e214]:
+            - generic [ref=e215]:
+              - generic [ref=e216]: 字号
+              - generic [ref=e217]:
+                - spinbutton "字号 px" [ref=e218]: "72"
+                - emphasis [ref=e219]: px
+            - generic [ref=e220]:
+              - generic [ref=e221]: 字重
+              - combobox "字重" [ref=e223] [cursor=pointer]:
+                - option "Regular"
+                - option "Medium"
+                - option "Semibold"
+                - option "Bold" [selected]
+        - generic [ref=e224]:
+          - button "复制图层 ⌘ D" [ref=e225] [cursor=pointer]:
+            - text: 复制图层
+            - generic [ref=e229]: ⌘ D
+          - button "删除图层" [ref=e230] [cursor=pointer]
+  - contentinfo [ref=e234]:
+    - generic [ref=e235]:
+      - generic [ref=e236]: 已保存 18:40
+      - generic [ref=e240]: 11 个图层
+    - generic [ref=e245]:
+      - generic [ref=e246]: SPACE
+      - text: 平移画布
+      - generic [ref=e247]: ⌘ + 滚轮
+      - text: 缩放
+    - generic [ref=e248]:
+      - generic [ref=e249]: LOCAL DRAFT
+      - generic [ref=e251]: v0.1.0
