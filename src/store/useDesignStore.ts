@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { starterLayers, templates } from '../data/templates';
 import { getBrushBounds } from '../lib/brush';
-import { saveCanvas, saveClipboard, saveProject } from '../lib/storage';
+import { saveCanvas, saveClipboard, saveProject, saveWorkspace } from '../lib/storage';
 import { DEFAULT_CANVAS_HEIGHT, DEFAULT_CANVAS_WIDTH, MAX_CANVAS_DIMENSION, MIN_CANVAS_HEIGHT, MIN_CANVAS_WIDTH } from '../types/design';
 import type { CanvasDocument, DesignTool, DrawPoint, Layer, LayerType, Project, ViewportState, WorkspaceSettings } from '../types/design';
 
@@ -32,6 +32,7 @@ interface DesignState {
   viewport: ViewportState;
   theme: 'liquid' | 'ivory';
   glassEnabled: boolean;
+  gridEnabled: boolean;
   templatesOpen: boolean;
   clipboard: Layer[];
   hydrated: boolean;
@@ -62,6 +63,7 @@ interface DesignState {
   renameCanvas: (id: string, name: string) => void;
   toggleTheme: () => void;
   toggleGlass: () => void;
+  toggleGrid: () => void;
   toggleTemplates: () => void;
   markSaved: () => void;
 }
@@ -86,6 +88,10 @@ const currentCanvasPatch = (state: DesignState, patch: Partial<CanvasDocument>) 
   };
 };
 
+const persistWorkspace = (projects: Project[], canvases: CanvasDocument[]) => {
+  void saveWorkspace(projects, canvases).catch(() => undefined);
+};
+
 export const useDesignStore = create<DesignState>((set, get) => ({
   projects: [initialProject],
   canvases: [initialCanvas],
@@ -98,6 +104,7 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   viewport: initialCanvas.viewport,
   theme: 'liquid',
   glassEnabled: true,
+  gridEnabled: true,
   templatesOpen: false,
   clipboard: [],
   hydrated: false,
@@ -122,6 +129,7 @@ export const useDesignStore = create<DesignState>((set, get) => ({
       viewport: canvas.viewport,
       theme: settings?.theme === 'ivory' ? 'ivory' : 'liquid',
       glassEnabled: settings?.glassEnabled ?? true,
+      gridEnabled: settings?.gridEnabled ?? true,
       activeTool: isDesignTool(settings?.activeTool) ? settings.activeTool : 'select',
       clipboard: cloneLayers(clipboard),
       hydrated: true,
@@ -232,17 +240,23 @@ export const useDesignStore = create<DesignState>((set, get) => ({
     set((state) => ({ layers, selectedIds: layers.find((layer) => layer.name === '主标题') ? [layers.find((layer) => layer.name === '主标题')!.id] : layers[0]?.id ? [layers[0].id] : [], documentName: template.name, templatesOpen: false, ...currentCanvasPatch(state, { layers, name: template.name }) }));
   },
   createProject: (name = '新项目', width = DEFAULT_CANVAS_WIDTH, height = DEFAULT_CANVAS_HEIGHT) => {
+    const state = get();
     const timestamp = now();
     const project: Project = { id: uid('project'), name, createdAt: timestamp, updatedAt: timestamp };
     const canvas: CanvasDocument = { id: uid('canvas'), projectId: project.id, name: '首张画布', width: normalizeDimension(width, DEFAULT_CANVAS_WIDTH, MIN_CANVAS_WIDTH), height: normalizeDimension(height, DEFAULT_CANVAS_HEIGHT, MIN_CANVAS_HEIGHT), layers: [], viewport: { x: 0, y: 0, scale: 0.8 }, createdAt: timestamp, updatedAt: timestamp };
-    set({ projects: [...get().projects, project], canvases: [...get().canvases, canvas], activeProjectId: project.id, activeCanvasId: canvas.id, documentName: canvas.name, layers: [], selectedIds: [], viewport: canvas.viewport, templatesOpen: false, savedAt: '保存中…' });
+    const projects = [...state.projects, project];
+    const canvases = [...state.canvases, canvas];
+    set({ projects, canvases, activeProjectId: project.id, activeCanvasId: canvas.id, documentName: canvas.name, layers: [], selectedIds: [], viewport: canvas.viewport, templatesOpen: false, savedAt: '保存中…' });
+    if (state.hydrated) persistWorkspace(projects, canvases);
   },
   createCanvas: (name = '新画布', duplicateActive = false, width = DEFAULT_CANVAS_WIDTH, height = DEFAULT_CANVAS_HEIGHT) => {
     const state = get();
     const timestamp = now();
     const source = duplicateActive ? state.canvases.find((canvas) => canvas.id === state.activeCanvasId) : undefined;
     const canvas: CanvasDocument = { id: uid('canvas'), projectId: state.activeProjectId, name, width: source?.width ?? normalizeDimension(width, DEFAULT_CANVAS_WIDTH, MIN_CANVAS_WIDTH), height: source?.height ?? normalizeDimension(height, DEFAULT_CANVAS_HEIGHT, MIN_CANVAS_HEIGHT), layers: source ? cloneLayers(source.layers).map((layer) => ({ ...layer, id: uid('layer') })) : [], viewport: source?.viewport ?? { x: 0, y: 0, scale: 0.8 }, createdAt: timestamp, updatedAt: timestamp };
-    set({ canvases: [...state.canvases, canvas], activeCanvasId: canvas.id, documentName: canvas.name, layers: cloneLayers(canvas.layers), selectedIds: [], viewport: canvas.viewport, templatesOpen: false, savedAt: '保存中…' });
+    const canvases = [...state.canvases, canvas];
+    set({ canvases, activeCanvasId: canvas.id, documentName: canvas.name, layers: cloneLayers(canvas.layers), selectedIds: [], viewport: canvas.viewport, templatesOpen: false, savedAt: '保存中…' });
+    if (state.hydrated) persistWorkspace(state.projects, canvases);
   },
   switchProject: (id) => {
     const state = get();
@@ -274,6 +288,7 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   },
   toggleTheme: () => set((state) => ({ theme: state.theme === 'liquid' ? 'ivory' : 'liquid' })),
   toggleGlass: () => set((state) => ({ glassEnabled: !state.glassEnabled })),
+  toggleGrid: () => set((state) => ({ gridEnabled: !state.gridEnabled, savedAt: '保存中…' })),
   toggleTemplates: () => set((state) => ({ templatesOpen: !state.templatesOpen })),
   markSaved: () => set({ savedAt: `已保存 ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}` }),
 }));
