@@ -11,6 +11,7 @@ import {
   FileCode2,
   FileArchive,
   FileImage,
+  Grid3x3,
   Hand,
   ImagePlus,
   Layers3,
@@ -18,7 +19,10 @@ import {
   Minus,
   MousePointer2,
   Move,
-  PanelRight,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   Pencil,
   Plus,
   Sparkles,
@@ -31,7 +35,7 @@ import { toPng } from 'html-to-image';
 import { templates } from './data/templates';
 import { buildHtmlString, buildZip, downloadBlob, downloadText, stylesFromLayer } from './lib/export';
 import { fitViewport, pinchViewport, screenToWorld, zoomAt, type PinchPoints, type Point } from './lib/viewport';
-import { loadWorkspace, saveCanvas, saveProject, saveSettings } from './lib/storage';
+import { loadWorkspace, saveSettings, saveWorkspace } from './lib/storage';
 import { getSelectedLayer, useDesignStore } from './store/useDesignStore';
 import { brushPointsToLocal, pointsToSvg } from './lib/brush';
 import { DEFAULT_CANVAS_HEIGHT, DEFAULT_CANVAS_WIDTH, type CanvasDocument, type DesignTool, type DrawPoint, type Layer, type LayerType, type Project, type ViewportState } from './types/design';
@@ -78,11 +82,11 @@ const getPinchPoints = (pointers: Map<number, Point>): PinchPoints | null => {
 function App() {
   const {
     projects, canvases, activeProjectId, activeCanvasId, documentName, layers, selectedIds, activeTool, viewport,
-    theme, glassEnabled, templatesOpen, clipboard, hydrated, savedAt,
+    theme, glassEnabled, gridEnabled, templatesOpen, clipboard, hydrated, savedAt,
     hydrateWorkspace, setDocumentName, setSelectedId, setSelectedIds, setActiveTool, setViewport, updateLayer,
     addLayer, addBrush, setCanvasSize, duplicateSelected, copySelected, pasteClipboard, deleteSelected, selectAll, applyTemplate,
     createProject, createCanvas, switchProject, switchCanvas, renameProject, renameCanvas,
-    toggleTemplates, markSaved,
+    toggleGrid, toggleTemplates, markSaved,
   } = useDesignStore();
   const selectedLayer = useDesignStore(getSelectedLayer);
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
@@ -101,8 +105,10 @@ function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [createDialog, setCreateDialog] = useState<'project' | 'canvas' | null>(null);
+  const [canvasCreateOpen, setCanvasCreateOpen] = useState(false);
   const [marquee, setMarquee] = useState<{ start: Point; current: Point } | null>(null);
   const [brushPreview, setBrushPreview] = useState<DrawPoint[] | null>(null);
   const marqueeJustFinished = useRef(false);
@@ -138,13 +144,12 @@ function App() {
     if (!activeCanvas || !activeProject) return;
     const timer = window.setTimeout(() => {
       Promise.all([
-        ...canvases.map((canvas) => saveCanvas(canvas.id === activeCanvasId ? { ...canvas, name: documentName, layers, viewport } : canvas)),
-        ...projects.map((project) => saveProject(project)),
-        saveSettings({ theme, glassEnabled, activeTool }),
+        saveWorkspace(projects, canvases.map((canvas) => canvas.id === activeCanvasId ? { ...canvas, name: documentName, layers, viewport } : canvas)),
+        saveSettings({ theme, glassEnabled, gridEnabled, activeTool }),
       ]).then(() => markSaved()).catch(() => undefined);
     }, 650);
     return () => window.clearTimeout(timer);
-  }, [activeCanvas, activeCanvasId, activeProjectId, activeTool, canvases, documentName, glassEnabled, hydrated, layers, markSaved, projects, theme, viewport]);
+  }, [activeCanvas, activeCanvasId, activeProjectId, activeTool, canvases, documentName, glassEnabled, gridEnabled, hydrated, layers, markSaved, projects, theme, viewport]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -209,6 +214,7 @@ function App() {
   }, [copySelected, deleteSelected, duplicateSelected, pasteClipboard, selectAll, setActiveTool, setSelectedId]);
 
   const handleViewportWheel = (event: React.WheelEvent<HTMLElement>) => {
+    if (!(event.target as HTMLElement).closest('.artboard')) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     if (event.ctrlKey || event.metaKey) {
@@ -222,6 +228,7 @@ function App() {
   const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     const viewportElement = event.currentTarget;
     if ((event.target as HTMLElement).closest('[data-canvas-ui]')) return;
+    if (!(event.target as HTMLElement).closest('.artboard')) return;
     const rect = viewportElement.getBoundingClientRect();
     const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     const isTouch = event.pointerType === 'touch';
@@ -383,7 +390,8 @@ function App() {
   };
 
   const handleViewportDoubleClick = (event: React.MouseEvent<HTMLElement>) => {
-    if (!['select', 'hand'].includes(activeTool) || (event.target as HTMLElement).closest('[data-canvas-ui]')) return;
+    const target = event.target as HTMLElement;
+    if (!['select', 'hand'].includes(activeTool) || target.closest('[data-canvas-ui]') || !target.closest('.artboard')) return;
     const rect = event.currentTarget.getBoundingClientRect();
     setViewport(zoomAt({ x: event.clientX - rect.left, y: event.clientY - rect.top }, 1.4, viewport));
   };
@@ -446,13 +454,13 @@ function App() {
   return (
     <div className={`app-shell ${theme === 'liquid' ? 'theme-liquid' : 'theme-ivory'}`}>
       <header className="topbar glass-panel">
-        <button className="brand-lockup" onClick={() => setNavigatorOpen((value) => !value)} title="打开项目与画布" aria-label="打开项目与画布">
+        <button className="brand-lockup" onClick={() => setNavigatorOpen((value) => !value)} title={navigatorOpen ? '收起项目侧边栏' : '打开项目侧边栏'} aria-label={navigatorOpen ? '收起项目侧边栏' : '打开项目侧边栏'} aria-expanded={navigatorOpen} aria-controls="workspace-drawer">
           <div className="brand-mark"><img src="/logo.png" alt="" /></div>
           <div className="brand-copy">
             <strong>GlassStudio</strong>
             <span>DESIGN TO DELIVER</span>
           </div>
-          <ChevronDown className="brand-chevron" size={13} />
+          {navigatorOpen ? <PanelLeftClose className="brand-chevron" size={13} /> : <PanelLeftOpen className="brand-chevron" size={13} />}
         </button>
         <div className="document-meta">
           <div className="document-name-row">
@@ -473,27 +481,30 @@ function App() {
             </div>}
           </div>
         </div>
-        {navigatorOpen && <WorkspaceNavigator
-          projects={projects}
-          canvases={canvases}
-          activeProjectId={activeProjectId}
-          activeCanvasId={activeCanvasId}
-          onClose={() => setNavigatorOpen(false)}
-          onNewProject={() => setCreateDialog('project')}
-          onNewCanvas={() => setCreateDialog('canvas')}
-          onDuplicateCanvas={() => { createCanvas(`${documentName} copy`, true); notify('已复制当前画布'); }}
-          onProjectSelect={(id) => { switchProject(id); }}
-          onCanvasSelect={(id) => { switchCanvas(id); setNavigatorOpen(false); }}
-          onRenameProject={renameProject}
-          onRenameCanvas={renameCanvas}
-        />}
       </header>
 
       <div className="workspace">
         <Toolbar activeTool={activeTool} setActiveTool={setActiveTool} toggleTemplates={toggleTemplates} />
+        {navigatorOpen && <>
+          <div className="workspace-drawer-backdrop" onClick={() => setNavigatorOpen(false)} />
+          <WorkspaceNavigator
+            projects={projects}
+            canvases={canvases}
+            activeProjectId={activeProjectId}
+            activeCanvasId={activeCanvasId}
+            onClose={() => setNavigatorOpen(false)}
+            onNewProject={() => { setNavigatorOpen(false); setCreateDialog('project'); }}
+            onNewCanvas={() => { setNavigatorOpen(false); setCanvasCreateOpen(true); }}
+            onDuplicateCanvas={() => { setNavigatorOpen(false); createCanvas(`${documentName} copy`, true); notify('已复制当前画布'); }}
+            onProjectSelect={(id) => { switchProject(id); }}
+            onCanvasSelect={(id) => { switchCanvas(id); setNavigatorOpen(false); }}
+            onRenameProject={renameProject}
+            onRenameCanvas={renameCanvas}
+          />
+        </>}
         <section
           ref={viewportRef}
-          className={`canvas-viewport ${activeTool === 'hand' ? 'is-hand' : ''}`}
+          className={`canvas-viewport ${activeTool === 'hand' ? 'is-hand' : ''} ${gridEnabled ? 'show-grid' : ''}`}
           onWheel={handleViewportWheel}
           onDoubleClick={handleViewportDoubleClick}
           onPointerDown={handlePointerDown}
@@ -506,6 +517,15 @@ function App() {
             <span className="canvas-mode"><span className="live-indicator" /> 画布</span>
             <span className="canvas-divider" />
             <span className="canvas-hint">正在编辑</span>
+            <button
+              className={`icon-button small grid-toggle ${gridEnabled ? 'is-active' : ''}`}
+              onClick={toggleGrid}
+              title={gridEnabled ? '关闭画布网格' : '开启画布网格'}
+              aria-label={gridEnabled ? '关闭画布网格' : '开启画布网格'}
+              aria-pressed={gridEnabled}
+            >
+              <Grid3x3 size={14} />
+            </button>
           </div>
           <div className="canvas-zoom glass-panel" data-canvas-ui>
             <ZoomControl scale={viewport.scale} zoomBy={zoomBy} fit={fit} />
@@ -514,7 +534,7 @@ function App() {
             className="world"
             style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}
           >
-            <div ref={artboardRef} className="artboard" onClick={handleCanvasClick} style={{ width: canvasWidth, height: canvasHeight }}>
+            <div ref={artboardRef} className={`artboard ${gridEnabled ? 'show-grid' : ''}`} onClick={handleCanvasClick} style={{ width: canvasWidth, height: canvasHeight }}>
               <div className="artboard-ruler ruler-top"><span>0</span><span>{Math.round(canvasWidth / 4)}</span><span>{Math.round(canvasWidth / 2)}</span><span>{Math.round(canvasWidth * 0.75)}</span><span>{canvasWidth}</span></div>
               <div className="artboard-ruler ruler-left"><span>0</span><span>{Math.round(canvasHeight / 4)}</span><span>{Math.round(canvasHeight / 2)}</span><span>{Math.round(canvasHeight * 0.75)}</span><span>{canvasHeight}</span></div>
               {layers.map((layer) => (
@@ -532,7 +552,9 @@ function App() {
           <ExportReminder />
           {templatesOpen && <TemplateRail onClose={toggleTemplates} applyTemplate={applyTemplate} />}
         </section>
-        <Inspector layer={selectedLayer} selectedCount={selectedIds.length} updateLayer={updateLayer} canvasWidth={canvasWidth} canvasHeight={canvasHeight} onCanvasSizeChange={setCanvasSize} onDelete={deleteSelected} onDuplicate={duplicateSelected} onCopy={copySelected} onPaste={pasteClipboard} canPaste={clipboard.length > 0} />
+        {inspectorOpen
+          ? <Inspector layer={selectedLayer} selectedCount={selectedIds.length} updateLayer={updateLayer} canvasWidth={canvasWidth} canvasHeight={canvasHeight} onCanvasSizeChange={setCanvasSize} onDelete={deleteSelected} onDuplicate={duplicateSelected} onCopy={copySelected} onPaste={pasteClipboard} canPaste={clipboard.length > 0} onToggle={() => setInspectorOpen(false)} />
+          : <button className="inspector-drawer-tab" onClick={() => setInspectorOpen(true)} title="展开属性面板" aria-label="展开属性面板"><PanelRightOpen size={15} /></button>}
       </div>
 
       <footer className="statusbar glass-panel">
@@ -544,6 +566,16 @@ function App() {
       <input ref={fileInputRef} onChange={handleFileChange} type="file" accept="image/*" hidden />
       {toast && <div className="toast"><Check size={15} /> {toast}</div>}
       {showShortcuts && <Shortcuts onClose={() => setShowShortcuts(false)} />}
+      {canvasCreateOpen && <CanvasCreateDialog onClose={() => setCanvasCreateOpen(false)} onCreate={(mode) => {
+        setCanvasCreateOpen(false);
+        if (mode === 'project') {
+          createProject();
+          notify('已作为独立项目新建');
+        } else {
+          createCanvas('新画布');
+          notify('已在当前项目新建画布');
+        }
+      }} />}
       {createDialog && <CreateDialog type={createDialog} onClose={() => setCreateDialog(null)} onCreate={(name, width, height) => {
         if (createDialog === 'project') createProject(name, width, height);
         else createCanvas(name, false, width, height);
@@ -565,7 +597,7 @@ function ZoomControl({ scale, zoomBy, fit }: { scale: number; zoomBy: (factor: n
 }
 
 function ExportReminder() {
-  return <div className="export-reminder" data-canvas-ui role="note" aria-label="完成设计后，记得及时导出">
+  return <div className="export-reminder" data-canvas-ui role="note" aria-label="工作区自动保存在浏览器，完成设计后记得及时导出">
     <div className="export-reminder-window">
       <div className="export-reminder-track">
         <ExportReminderItems />
@@ -577,11 +609,11 @@ function ExportReminder() {
 
 function ExportReminderItems({ ariaHidden = false }: { ariaHidden?: boolean }) {
   return <div className="export-reminder-items" aria-hidden={ariaHidden}>
+    <span><Check size={13} strokeWidth={2.2} />自动保存在浏览器</span>
+    <i />
     <span><Download size={13} strokeWidth={2.2} />完成设计后，记得及时导出</span>
     <i />
-    <span>完成设计后，记得及时导出</span>
-    <i />
-    <span>完成设计后，记得及时导出</span>
+    <span><Check size={13} strokeWidth={2.2} />自动保存在浏览器</span>
   </div>;
 }
 
@@ -660,7 +692,7 @@ function WorkspaceNavigator({
   onRenameProject: (id: string, name: string) => void;
   onRenameCanvas: (id: string, name: string) => void;
 }) {
-  return <div className="workspace-navigator glass-panel" onClick={(event) => event.stopPropagation()}>
+  return <div id="workspace-drawer" className="workspace-navigator glass-panel" onClick={(event) => event.stopPropagation()}>
     <div className="navigator-heading">
       <div><span className="eyebrow">WORKSPACE</span><h2>项目与画布</h2></div>
       <button className="icon-button small" onClick={onClose} title="关闭项目导航" aria-label="关闭项目导航"><X size={15} /></button>
@@ -691,16 +723,16 @@ function WorkspaceNavigator({
   </div>;
 }
 
-function Inspector({ layer, selectedCount, updateLayer, canvasWidth, canvasHeight, onCanvasSizeChange, onDelete, onDuplicate, onCopy, onPaste, canPaste }: { layer?: Layer; selectedCount: number; updateLayer: (id: string, patch: Partial<Layer>) => void; canvasWidth: number; canvasHeight: number; onCanvasSizeChange: (width: number, height: number) => void; onDelete: () => void; onDuplicate: () => void; onCopy: () => void; onPaste: () => void; canPaste: boolean }) {
+function Inspector({ layer, selectedCount, updateLayer, canvasWidth, canvasHeight, onCanvasSizeChange, onDelete, onDuplicate, onCopy, onPaste, canPaste, onToggle }: { layer?: Layer; selectedCount: number; updateLayer: (id: string, patch: Partial<Layer>) => void; canvasWidth: number; canvasHeight: number; onCanvasSizeChange: (width: number, height: number) => void; onDelete: () => void; onDuplicate: () => void; onCopy: () => void; onPaste: () => void; canPaste: boolean; onToggle: () => void }) {
   if (!layer) {
-    return <aside className="inspector glass-panel empty-inspector"><div className="panel-heading"><div><span className="eyebrow">INSPECTOR</span><h2>属性检查器</h2></div><PanelRight size={16} /></div><div className="inspector-scroll"><CanvasSizeFields key={`${canvasWidth}-${canvasHeight}`} width={canvasWidth} height={canvasHeight} onChange={onCanvasSizeChange} /><div className="empty-state"><div className="empty-icon"><BoxSelect size={20} /></div><strong>{selectedCount > 1 ? `已选择 ${selectedCount} 个图层` : '选择一个图层'}</strong><p>{selectedCount > 1 ? '使用 ⌘ C / ⌘ V 复制粘贴选中的对象。' : '点击画布中的对象，编辑它的位置、尺寸和视觉样式。'}</p></div><div className="inspector-note"><Sparkles size={14} /><span>拖动画布空白处，可以框选多个对象。</span></div></div></aside>;
+    return <aside className="inspector glass-panel empty-inspector"><div className="panel-heading"><div><span className="eyebrow">INSPECTOR</span><h2>属性检查器</h2></div><div className="panel-heading-actions"><button className="icon-button small" onClick={onToggle} title="收起属性面板" aria-label="收起属性面板"><PanelRightClose size={15} /></button></div></div><div className="inspector-scroll"><CanvasSizeFields key={`${canvasWidth}-${canvasHeight}`} width={canvasWidth} height={canvasHeight} onChange={onCanvasSizeChange} /><div className="empty-state"><div className="empty-icon"><BoxSelect size={20} /></div><strong>{selectedCount > 1 ? `已选择 ${selectedCount} 个图层` : '选择一个图层'}</strong><p>{selectedCount > 1 ? '使用 ⌘ C / ⌘ V 复制粘贴选中的对象。' : '点击画布中的对象，编辑它的位置、尺寸和视觉样式。'}</p></div><div className="inspector-note"><Sparkles size={14} /><span>拖动画布空白处，可以框选多个对象。</span></div></div></aside>;
   }
   const numeric = (key: 'x' | 'y' | 'width' | 'height' | 'rotation' | 'opacity' | 'fontSize' | 'strokeWidth', label: string, suffix = '') => (
     <label className="field"><span>{label}</span><div className="field-input"><input type="number" value={key === 'opacity' ? Math.round((layer[key] ?? 1) * 100) : formatNumber(layer[key])} min={key === 'opacity' ? 0 : undefined} max={key === 'opacity' ? 100 : undefined} onChange={(event) => updateLayer(layer.id, { [key]: key === 'opacity' ? Number(event.target.value) / 100 : Number(event.target.value) })} /><em>{suffix}</em></div></label>
   );
   return (
     <aside className="inspector glass-panel">
-      <div className="panel-heading"><div><span className="eyebrow">INSPECTOR / {layerTypeLabel[layer.type]}</span><h2>{layer.name}</h2></div><button className="icon-button small" onClick={onDelete} title="删除图层" aria-label="删除图层"><Trash2 size={15} /></button></div>
+      <div className="panel-heading"><div><span className="eyebrow">INSPECTOR / {layerTypeLabel[layer.type]}</span><h2>{layer.name}</h2></div><div className="panel-heading-actions"><button className="icon-button small" onClick={onToggle} title="收起属性面板" aria-label="收起属性面板"><PanelRightClose size={15} /></button><button className="icon-button small" onClick={onDelete} title="删除图层" aria-label="删除图层"><Trash2 size={15} /></button></div></div>
       <div className="inspector-scroll">
         <CanvasSizeFields key={`${canvasWidth}-${canvasHeight}`} width={canvasWidth} height={canvasHeight} onChange={onCanvasSizeChange} />
         {selectedCount > 1 && <div className="selection-summary"><BoxSelect size={14} /><strong>已选择 {selectedCount} 个图层</strong></div>}
@@ -743,6 +775,28 @@ function CreateDialog({ type, onClose, onCreate }: { type: 'project' | 'canvas';
       </div>
       <div className="create-dialog-actions"><button type="button" className="navigator-secondary" onClick={onClose}>取消</button><button type="submit" className="navigator-primary"><Plus size={14} /> 创建</button></div>
     </form>
+  </div>;
+}
+
+function CanvasCreateDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (mode: 'current' | 'project') => void }) {
+  const [mode, setMode] = useState<'current' | 'project'>('current');
+  return <div className="dialog-overlay" onClick={onClose}>
+    <div className="create-dialog glass-panel" onClick={(event) => event.stopPropagation()}>
+      <div className="dialog-heading"><div><span className="eyebrow">NEW CANVAS</span><h2>新建画布</h2></div><button className="icon-button small" onClick={onClose} title="关闭" aria-label="关闭"><X size={15} /></button></div>
+      <div className="canvas-create-options">
+        <label className={`canvas-create-option ${mode === 'current' ? 'is-selected' : ''}`}>
+          <input type="radio" name="canvas-create-mode" checked={mode === 'current'} onChange={() => setMode('current')} />
+          <span className="canvas-create-icon"><Copy size={15} /></span>
+          <span className="canvas-create-copy"><strong>当前页面新建第二个</strong><small>添加到当前项目，默认推荐</small></span>
+        </label>
+        <label className={`canvas-create-option ${mode === 'project' ? 'is-selected' : ''}`}>
+          <input type="radio" name="canvas-create-mode" checked={mode === 'project'} onChange={() => setMode('project')} />
+          <span className="canvas-create-icon"><Library size={15} /></span>
+          <span className="canvas-create-copy"><strong>作为独立项目新建</strong><small>创建一个新项目，并放入一张新画布</small></span>
+        </label>
+      </div>
+      <div className="create-dialog-actions"><button className="navigator-secondary" onClick={onClose}>取消</button><button className="navigator-primary" onClick={() => onCreate(mode)}><Plus size={14} /> 创建</button></div>
+    </div>
   </div>;
 }
 

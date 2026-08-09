@@ -61,6 +61,7 @@ export interface CanvasDocument {
 export interface WorkspaceSettings {
   theme: 'liquid' | 'ivory';
   glassEnabled: boolean;
+  gridEnabled: boolean;
   activeTool?: DesignTool;
 }
 
